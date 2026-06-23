@@ -1,0 +1,7 @@
+# SwiftPM
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+__MACOSX/
