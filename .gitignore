@@ -2,6 +2,24 @@
 .build/
 .swiftpm/
 
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+**/xcuserdata/
+
 # macOS
 .DS_Store
 __MACOSX/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment / local config
+.env
+*.env
+
+# Logs
+*.log
