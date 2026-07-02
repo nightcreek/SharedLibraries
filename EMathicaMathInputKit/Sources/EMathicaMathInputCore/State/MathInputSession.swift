@@ -29,6 +29,10 @@ public final class MathInputSession: ObservableObject {
         syncDerivedStrings()
     }
 
+    public func formula() -> MathFormula {
+        MathFormulaProjection.project(editorState.root)
+    }
+
     public func replaceEditorState(_ newState: EditorState) {
         editorState = newState
         syncDerivedStrings()
