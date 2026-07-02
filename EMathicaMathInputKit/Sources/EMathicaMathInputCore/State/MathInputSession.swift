@@ -29,8 +29,9 @@ public final class MathInputSession: ObservableObject {
         syncDerivedStrings()
     }
 
+    /// Returns an immutable structural snapshot for consumers outside the editor layer.
     public func formula() -> MathFormula {
-        MathFormulaProjection.project(editorState.root)
+        MathFormulaProjection.snapshot(from: editorState.root)
     }
 
     public func replaceEditorState(_ newState: EditorState) {

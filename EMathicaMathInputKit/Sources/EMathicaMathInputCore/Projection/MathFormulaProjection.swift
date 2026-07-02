@@ -1,6 +1,16 @@
 import Foundation
 
-enum MathFormulaProjection {
+/// One-way snapshot projection from editor AST into the public structural protocol.
+///
+/// Editor Dominance Rule:
+/// - `MathNode` / `EditorState` remain the only mutable editing structures.
+/// - projection is deterministic and one-way.
+/// - projected `MathFormula` values must never be fed back as an editing surface.
+public enum MathFormulaProjection {
+    public static func snapshot(from root: MathNode) -> MathFormula {
+        project(root)
+    }
+
     static func project(_ node: MathNode) -> MathFormula {
         switch node {
         case .sequence(let nodes):

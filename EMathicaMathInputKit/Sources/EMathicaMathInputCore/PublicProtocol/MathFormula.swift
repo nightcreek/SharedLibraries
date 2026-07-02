@@ -1,5 +1,12 @@
 import Foundation
 
+/// Immutable structural snapshot projected from the editor layer.
+///
+/// Projection Freeze Rule:
+/// - `MathFormula` is a read-only snapshot.
+/// - `MathFormula` must not store cursor, selection, or UI state.
+/// - `MathFormula` must not be used as an editing surface.
+/// - All mutation remains in `MathNode` + `EditorState` + `MathEditorEngine`.
 public indirect enum MathFormula: Hashable {
     case sequence([MathFormula])
     case symbol(String)
@@ -11,8 +18,8 @@ public indirect enum MathFormula: Hashable {
 }
 
 public struct MathFunctionFormula: Hashable {
-    public var name: String
-    public var arguments: [MathFormula]
+    public let name: String
+    public let arguments: [MathFormula]
 
     public init(name: String, arguments: [MathFormula]) {
         self.name = name
@@ -21,8 +28,8 @@ public struct MathFunctionFormula: Hashable {
 }
 
 public struct MathTemplateFormula: Hashable {
-    public var kind: MathTemplateKind
-    public var fields: [MathFormula]
+    public let kind: MathTemplateKind
+    public let fields: [MathFormula]
 
     public init(kind: MathTemplateKind, fields: [MathFormula]) {
         self.kind = kind
@@ -39,8 +46,22 @@ public enum MathTemplateKind: String, Hashable {
     case absoluteValue
 }
 
+/// External cursor input for display projection.
+///
+/// Display Isolation Rule:
+/// - display projection may consume cursor state,
+/// - but that cursor state stays external to `MathFormula`,
+/// - and remains owned by the editor layer.
+public struct FormulaDisplayCursorState: Hashable {
+    public let editorCursor: EditorCursor
+
+    public init(editorCursor: EditorCursor) {
+        self.editorCursor = editorCursor
+    }
+}
+
 public struct FormulaDisplayMarkup: RawRepresentable, Hashable, ExpressibleByStringLiteral {
-    public var rawValue: String
+    public let rawValue: String
 
     public init(rawValue: String) {
         self.rawValue = rawValue
