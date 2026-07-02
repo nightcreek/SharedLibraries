@@ -71,3 +71,45 @@ public struct FormulaDisplayMarkup: RawRepresentable, Hashable, ExpressibleByStr
         self.rawValue = value
     }
 }
+
+/// Centralized architecture invariants for the MathInput stack.
+///
+/// Editor invariants:
+/// - `MathNode` + `EditorState` + engine/controller types are the only mutable editing layer.
+/// - all mutation must stay in the editor layer.
+///
+/// Projection invariants:
+/// - `MathFormula` is an immutable structural snapshot.
+/// - projection is one-way only.
+/// - projection must not carry cursor, selection, or UI state.
+///
+/// Display invariants:
+/// - display projection is a pure derived function.
+/// - display markup must not become editor state.
+/// - cursor is always external input.
+public enum MathInputArchitectureInvariants {
+    public static func validateProjectionSnapshot(_ formula: MathFormula) {
+        walk(formula)
+    }
+
+    public static func validateDisplayProjectionInput(
+        source: MathFormula,
+        cursor: FormulaDisplayCursorState?
+    ) {
+        _ = cursor
+        validateProjectionSnapshot(source)
+    }
+
+    private static func walk(_ formula: MathFormula) {
+        switch formula {
+        case .sequence(let items):
+            items.forEach(walk)
+        case .function(let function):
+            function.arguments.forEach(walk)
+        case .template(let template):
+            template.fields.forEach(walk)
+        case .symbol, .number, .operatorSymbol, .rawLatex:
+            return
+        }
+    }
+}

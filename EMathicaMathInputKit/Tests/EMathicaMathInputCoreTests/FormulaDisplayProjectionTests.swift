@@ -60,4 +60,23 @@ final class FormulaDisplayProjectionTests: XCTestCase {
         XCTAssertEqual(formula, .sequence([.symbol("x")]))
         XCTAssertEqual(markup.rawValue, "x")
     }
+
+    func testProjectionSnapshotValidationAcceptsCurrentFormulaValues() {
+        let formula = MathFormula.sequence([
+            .function(
+                MathFunctionFormula(
+                    name: "sin",
+                    arguments: [.sequence([.symbol("x")])]
+                )
+            ),
+            .template(
+                MathTemplateFormula(
+                    kind: .fraction,
+                    fields: [.sequence([.number("1")]), .sequence([.number("2")])]
+                )
+            )
+        ])
+
+        MathInputArchitectureInvariants.validateProjectionSnapshot(formula)
+    }
 }

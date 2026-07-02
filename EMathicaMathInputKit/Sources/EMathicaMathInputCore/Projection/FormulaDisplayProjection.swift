@@ -11,8 +11,22 @@ public enum FormulaDisplayProjection {
         source: MathFormula,
         cursor: FormulaDisplayCursorState? = nil
     ) -> FormulaDisplayMarkup {
+        MathInputArchitectureInvariants.validateDisplayProjectionInput(
+            source: source,
+            cursor: cursor
+        )
         _ = cursor
         return FormulaDisplayMarkup(rawValue: serialize(source))
+    }
+
+    @available(*, unavailable, message: "displayout must be derived from MathFormula plus external cursor state, not from EditorState.")
+    public static func displayout(editorState: EditorState) -> FormulaDisplayMarkup {
+        fatalError("Unavailable")
+    }
+
+    @available(*, unavailable, message: "displayout must not depend on MathInputSession. Project to MathFormula first, then provide external cursor state.")
+    public static func displayout(session: MathInputSession) -> FormulaDisplayMarkup {
+        fatalError("Unavailable")
     }
 
     private static func serialize(_ formula: MathFormula) -> String {

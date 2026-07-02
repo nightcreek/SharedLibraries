@@ -45,4 +45,22 @@ final class MathInputProjectionAdapterTests: XCTestCase {
         XCTAssertEqual(state.editorState, before)
         XCTAssertEqual(markup.rawValue, #"\frac{x}{\placeholder{}}"#)
     }
+
+    func testProjectionAdapterReadsStableSnapshotsAcrossCursorChanges() throws {
+        var state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([.character("x"), .operatorSymbol("+"), .character("1")]),
+                cursor: EditorCursor(path: [], offset: 0),
+                selection: nil
+            )
+        )
+
+        let first = state.mathFormulaSnapshot
+        state.editorState.cursor = EditorCursor(path: [], offset: 3)
+        let selectionData = Data(#"{"anchor":{"path":[],"offset":0},"focus":{"path":[],"offset":2}}"#.utf8)
+        state.editorState.selection = try JSONDecoder().decode(EditorSelection.self, from: selectionData)
+        let second = state.mathFormulaSnapshot
+
+        XCTAssertEqual(first, second)
+    }
 }

@@ -8,7 +8,14 @@ import Foundation
 /// - projected `MathFormula` values must never be fed back as an editing surface.
 public enum MathFormulaProjection {
     public static func snapshot(from root: MathNode) -> MathFormula {
-        project(root)
+        let snapshot = project(root)
+        MathInputArchitectureInvariants.validateProjectionSnapshot(snapshot)
+        return snapshot
+    }
+
+    @available(*, unavailable, message: "Projection is one-way only. MathFormula must not be converted back into mutable editor state.")
+    public static func editorState(from formula: MathFormula) -> EditorState {
+        fatalError("Unavailable")
     }
 
     static func project(_ node: MathNode) -> MathFormula {

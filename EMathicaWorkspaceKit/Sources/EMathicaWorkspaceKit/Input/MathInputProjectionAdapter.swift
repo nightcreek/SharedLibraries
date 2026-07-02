@@ -18,6 +18,14 @@ public enum MathInputProjectionAdapter {
             cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor)
         )
     }
+
+    @available(*, unavailable, message: "WorkspaceKit must mutate editorState through the existing editor pipeline, not by writing MathFormula back into FormulaInputState.")
+    public static func replaceEditorState(
+        in state: inout FormulaInputState,
+        with formula: MathFormula
+    ) {
+        fatalError("Unavailable")
+    }
 }
 
 public extension FormulaInputState {
