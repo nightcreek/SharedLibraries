@@ -26,7 +26,7 @@ let package = Package(
                 "EMathicaMathCore",
                 "EMathicaDocumentKit",
                 "EMathicaThemeKit",
-                "EMathicaMathInputKit"
+                .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit")
             ],
             path: "Sources/EMathicaWorkspaceKit"
         ),
