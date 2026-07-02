@@ -317,30 +317,30 @@ The intended first display subset includes:
 - number
 - operator
 - function
-- `\\frac{}{}`
-- `\\sqrt{}`
+- `\frac{}{}`
+- `\sqrt{}`
 - `^{}`
 - `_{}`
 - `(...)`
 - `|...|`
-- `\\cursor{}`
-- `\\placeholder{}`
+- `\cursor{}`
+- `\placeholder{}`
 - `□`
 
 Protocol notes:
 
-- `\\cursor{}` marks the current cursor position
-- `\\placeholder{}` marks an empty slot
-- `□` is a short form for `\\placeholder{}`
-- the formal protocol prefers `\\placeholder{}`
+- `\cursor{}` marks the current cursor position
+- `\placeholder{}` marks an empty slot
+- `□` is a short form for `\placeholder{}`
+- the formal protocol prefers `\placeholder{}`
 
 Example:
 
-- `\\frac{x}{\\cursor{}\\placeholder{}}`
+- `\frac{x}{\cursor{}\placeholder{}}`
 
 Short form:
 
-- `\\frac{x}{\\cursor{}□}`
+- `\frac{x}{\cursor{}□}`
 
 These are display-equivalent forms.
 
@@ -363,15 +363,15 @@ The intended outputs are:
 
 `latexout()`:
 
-- `\\frac{x}{}`
+- `\frac{x}{}`
 
 `displayout()`:
 
-- `\\frac{x}{\\cursor{}\\placeholder{}}`
+- `\frac{x}{\cursor{}\placeholder{}}`
 
 or, as a short form:
 
-- `\\frac{x}{\\cursor{}□}`
+- `\frac{x}{\cursor{}□}`
 
 ### Display Boundary
 
@@ -417,13 +417,13 @@ The intended first supported import range includes:
 - `x+1`
 - `x^2`
 - `x_1`
-- `\\frac{x}{2}`
-- `\\sqrt{x}`
-- `\\sin(x)`
-- `\\cos(x)`
-- `\\tan(x)`
-- `\\ln(x)`
-- `\\log(x)`
+- `\frac{x}{2}`
+- `\sqrt{x}`
+- `\sin(x)`
+- `\cos(x)`
+- `\tan(x)`
+- `\ln(x)`
+- `\log(x)`
 - `(x+1)`
 - `|x|`
 
