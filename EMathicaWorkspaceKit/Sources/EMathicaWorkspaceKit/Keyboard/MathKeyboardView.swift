@@ -165,7 +165,6 @@ private struct MathKeyboardTabBar: View {
                     isSelected: selection == tab,
                     colorScheme: colorScheme
                 ) {
-                    print("[KeyboardTab] tapped \(tab.id)")
                     var noAnimation = Transaction()
                     noAnimation.animation = nil
                     withTransaction(noAnimation) {
@@ -194,11 +193,10 @@ internal struct MathKeyboardKey: View, @preconcurrency Equatable {
         GlassKeyButton(
             title: key.title,
             subtitle: key.subtitle,
-            isAccent: key.isAccent,
-            isTemplate: key.isTemplate,
-            colorScheme: colorScheme
+                isAccent: key.isAccent,
+                isTemplate: key.isTemplate,
+                colorScheme: colorScheme
         ) {
-            print("[KeyTap] key.id = \(key.id)")
             action()
         }
         .transaction { tx in
@@ -448,120 +446,5 @@ private struct LiquidGlassKeyBackground: View {
 
     private var shadowOpacity: Double {
         colorScheme == .dark ? 0.08 : 0.06
-    }
-}
-
-public enum MathKeyboardVisualMetrics {
-    public static let backplateCornerRadius: CGFloat = 20
-    public static let backplatePaddingTop: CGFloat = 12
-    public static let backplatePaddingHorizontal: CGFloat = 9
-    public static let backplatePaddingBottom: CGFloat = 10
-    public static let backplateVisualBleedVertical: CGFloat = 5
-    public static let backplateVisualBleedHorizontal: CGFloat = 3
-    public static let keysBackplateDarkOpacity: Double = 0.32
-    public static let keysBackplateLightOpacity: Double = 0.22
-    public static let keysBackplateMaterialDarkOpacity: Double = 0.46
-    public static let keysBackplateMaterialLightOpacity: Double = 0.54
-    public static let keysBackplateStrokeDarkOpacity: Double = 0.24
-    public static let keysBackplateStrokeLightOpacity: Double = 0.18
-    public static let keysBackplateTopHighlightDarkOpacity: Double = 0.11
-    public static let keysBackplateTopHighlightLightOpacity: Double = 0.14
-    public static let keysBackplateBottomShadeDarkOpacity: Double = 0.08
-    public static let keysBackplateBottomShadeLightOpacity: Double = 0.03
-    public static let backplateTopHighlightHeight: CGFloat = 1
-    public static let backplateBottomShadeHeight: CGFloat = 3
-    public static let keysBackplateShadowDarkOpacity: Double = 0.14
-    public static let keysBackplateShadowLightOpacity: Double = 0.06
-    public static let keyDarkOpacity: Double = 0.05
-    public static let keyLightOpacity: Double = 0.22
-    public static let categoryKeyDarkOpacity: Double = 0.04
-    public static let categoryKeyLightOpacity: Double = 0.20
-    public static let categoryActiveDarkOpacity: Double = 0.24
-    public static let categoryActiveLightOpacity: Double = 0.24
-    public static let accentKeyDarkOpacity: Double = 0.26
-    public static let accentKeyLightOpacity: Double = 0.24
-    public static let keyBorderDarkOpacity: Double = 0.16
-    public static let keyBorderLightOpacity: Double = 0.24
-}
-
-public struct KeyboardKey: Identifiable, Hashable, Equatable {
-    public var id: String
-    public var title: String
-    public var subtitle: String?
-    public var action: KeyboardAction
-    public var isTemplate: Bool
-    public var isAccent: Bool
-
-    public static func text(_ value: String) -> KeyboardKey {
-        KeyboardKey(id: "text:\(value)", title: value, subtitle: nil, action: .insertCharacter(value), isTemplate: false, isAccent: false)
-    }
-
-    public static func symbol(_ title: String, raw: String) -> KeyboardKey {
-        KeyboardKey(id: "symbol:\(raw)", title: title, subtitle: nil, action: .insertSymbol(raw), isTemplate: false, isAccent: false)
-    }
-
-    public static func op(_ title: String, raw: String, accent: Bool = false) -> KeyboardKey {
-        KeyboardKey(id: "op:\(raw):\(title)", title: title, subtitle: nil, action: .insertOperator(raw), isTemplate: false, isAccent: accent)
-    }
-
-    public static func template(_ title: String, subtitle: String, kind: TemplateKind, accent: Bool = false) -> KeyboardKey {
-        KeyboardKey(id: "tpl:\(title)", title: title, subtitle: subtitle, action: .insertTemplate(kind), isTemplate: true, isAccent: accent)
-    }
-
-    public static func function(_ title: String) -> KeyboardKey {
-        KeyboardKey(id: "fn:\(title)", title: title, subtitle: nil, action: .insertFunction(title), isTemplate: false, isAccent: false)
-    }
-
-    public static func command(_ title: String, action: KeyboardAction, accent: Bool = false) -> KeyboardKey {
-        KeyboardKey(id: "cmd:\(title)", title: title, subtitle: nil, action: action, isTemplate: false, isAccent: accent)
-    }
-}
-
-public enum MathKeyboardTab: String, CaseIterable, Identifiable {
-    case numbers
-    case functions
-    case alphabet
-    case symbols
-
-    public var id: String { rawValue }
-
-    public var title: String {
-        switch self {
-        case .numbers: return "123"
-        case .functions: return "f(x)"
-        case .alphabet: return "ABC"
-        case .symbols: return "符号"
-        }
-    }
-
-    public var rows: [[KeyboardKey]] {
-        switch self {
-        case .numbers:
-            return [
-                [.text("x"), .text("y"), .symbol("π", raw: "\\pi"), .text("e"), .text("7"), .text("8"), .text("9"), .op("×", raw: "*"), .op("÷", raw: "/")],
-                [.template("x²", subtitle: "上标", kind: .superscript), .template("xʸ", subtitle: "指数", kind: .superscript), .template("√□", subtitle: "根号", kind: .sqrt), .template("|□|", subtitle: "绝对值", kind: .absoluteValue), .text("4"), .text("5"), .text("6"), .op("+", raw: "+"), .op("-", raw: "-")],
-                [.op("<", raw: "<"), .op(">", raw: ">"), .op("≤", raw: "\\leq"), .op("≥", raw: "\\geq"), .text("1"), .text("2"), .text("3"), .op("=", raw: "=", accent: true), .command("⌫", action: .deleteBackward)],
-                [.function("sin"), .function("cos"), .function("tan"), .function("log"), .text("0"), .text("."), .command("←", action: .moveLeft), .command("→", action: .moveRight), .command("↵", action: .submit, accent: true)]
-            ]
-        case .functions:
-            return [
-                [.function("sin"), .function("cos"), .function("tan"), .function("ln"), .function("log"), .function("exp"), .template("|□|", subtitle: "abs", kind: .absoluteValue), .template("√□", subtitle: "根号", kind: .sqrt), .template("□⁄□", subtitle: "分数", kind: .fraction)],
-                [.template("xʸ", subtitle: "上标", kind: .superscript), .template("xₙ", subtitle: "下标", kind: .subscriptTemplate), .template("x(t),y(t)", subtitle: "参数", kind: .parametricEquation2D), .template("分段", subtitle: "cases", kind: .piecewise(rows: 2)), .template("(□)", subtitle: "括号", kind: .parentheses), .text("("), .text(")"), .op("+", raw: "+"), .op("-", raw: "-")],
-                [.text("x"), .text("y"), .text("t"), .symbol("π", raw: "\\pi"), .text("e"), .command("←", action: .moveLeft), .command("→", action: .moveRight), .command("⌫", action: .deleteBackward), .command("↵", action: .submit, accent: true)]
-            ]
-        case .alphabet:
-            return [
-                [.text("a"), .text("b"), .text("c"), .text("d"), .text("n"), .text("r"), .text("h"), .text("k"), .text("m")],
-                [.text("p"), .text("q"), .text("u"), .text("v"), .text("A"), .text("B"), .text("C"), .text("D"), .text("E")],
-                [.text("f"), .text("g"), .text("i"), .text("j"), .text("l"), .text("o"), .text("s"), .text("w"), .text("z")],
-                [.command("←", action: .moveLeft), .command("→", action: .moveRight), .text(","), .text("."), .text("("), .text(")"), .op("=", raw: "="), .command("⌫", action: .deleteBackward), .command("↵", action: .submit, accent: true)]
-            ]
-        case .symbols:
-            return [
-                [.op("<", raw: "<"), .op(">", raw: ">"), .op("≤", raw: "\\leq"), .op("≥", raw: "\\geq"), .op("≠", raw: "\\neq"), .text("("), .text(")"), .text("["), .text("]")],
-                [.text("|"), .text("{"), .text("}"), .op("+", raw: "+"), .op("-", raw: "-"), .op("×", raw: "*"), .op("÷", raw: "/"), .op("=", raw: "="), .text(",")],
-                [.symbol("θ", raw: "\\theta"), .symbol("α", raw: "\\alpha"), .symbol("β", raw: "\\beta"), .symbol("∞", raw: "\\infty"), .symbol("∈", raw: "\\in"), .symbol("∉", raw: "\\notin"), .symbol("∅", raw: "\\emptyset"), .command("⌫", action: .deleteBackward), .command("↵", action: .submit, accent: true)]
-            ]
-        }
     }
 }
