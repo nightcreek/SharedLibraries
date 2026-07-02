@@ -3,6 +3,10 @@ import XCTest
 
 final class EMathicaMathInputCoreTests: XCTestCase {
 
+    private func projectedSource(_ state: EditorState) -> String {
+        SourceSerializer().project(state).source
+    }
+
     // MARK: - Basic Input
 
     func testBasicInsertAndSerialization() {
@@ -121,6 +125,102 @@ final class EMathicaMathInputCoreTests: XCTestCase {
         let projection = SourceSerializer().project(state)
         XCTAssertEqual(projection.source, "x")
         XCTAssertEqual(state.cursor.offset, 1)
+    }
+
+    func testLegacyAliasesMapToCanonicalActions() {
+        XCTAssertEqual(InputController.canonicalAction(for: .backspace), .deleteBackward)
+        XCTAssertEqual(InputController.canonicalAction(for: .delete), .deleteForward)
+        XCTAssertEqual(InputController.canonicalAction(for: .enter), .submit)
+        XCTAssertEqual(InputController.canonicalAction(for: .moveLeft), .moveLeft)
+    }
+
+    func testBackspaceAtStartIsStable() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.backspace, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "")
+        XCTAssertEqual(state.cursor.offset, 0)
+    }
+
+    func testDeleteForwardAtEndIsStable() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertCharacter("x"), state: &state)
+        controller.handle(.deleteForward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "x")
+        XCTAssertEqual(state.cursor.offset, 1)
+    }
+
+    func testMoveLeftAndMoveRightStayWithinBounds() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.moveLeft, state: &state)
+        XCTAssertEqual(state.cursor.offset, 0)
+
+        controller.handle(.insertCharacter("a"), state: &state)
+        controller.handle(.moveLeft, state: &state)
+        controller.handle(.moveLeft, state: &state)
+        XCTAssertEqual(state.cursor.offset, 0)
+
+        controller.handle(.moveRight, state: &state)
+        controller.handle(.moveRight, state: &state)
+        XCTAssertEqual(state.cursor.offset, 1)
+    }
+
+    func testDeleteBackwardRemovesSelectedRange() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertCharacter("x"), state: &state)
+        controller.handle(.insertCharacter("y"), state: &state)
+        controller.handle(.insertCharacter("z"), state: &state)
+        state.selection = EditorSelection(
+            anchor: EditorCursor(path: [], offset: 1),
+            focus: EditorCursor(path: [], offset: 3)
+        )
+
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "x")
+        XCTAssertEqual(state.cursor.offset, 1)
+        XCTAssertNil(state.selection)
+    }
+
+    func testInsertCharacterReplacesSelectedRange() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertCharacter("x"), state: &state)
+        controller.handle(.insertCharacter("y"), state: &state)
+        controller.handle(.insertCharacter("z"), state: &state)
+        state.selection = EditorSelection(
+            anchor: EditorCursor(path: [], offset: 0),
+            focus: EditorCursor(path: [], offset: 2)
+        )
+
+        controller.handle(.insertCharacter("a"), state: &state)
+
+        XCTAssertEqual(projectedSource(state), "az")
+        XCTAssertEqual(state.cursor.offset, 1)
+        XCTAssertNil(state.selection)
+    }
+
+    func testSubmitDoesNotMutateEditorState() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertCharacter("x"), state: &state)
+        let before = state
+
+        controller.handle(.submit, state: &state)
+        controller.handle(.enter, state: &state)
+
+        XCTAssertEqual(state, before)
     }
 
     // MARK: - Serialization Round Trip

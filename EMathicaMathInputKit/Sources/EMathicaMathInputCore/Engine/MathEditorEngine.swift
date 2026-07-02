@@ -5,17 +5,7 @@ public final class InputController {
     private let cursorController = CursorController()
 
     public func handle(_ action: KeyboardAction, state: inout EditorState) {
-        let canonicalAction: KeyboardAction
-        switch action {
-        case .backspace:
-            canonicalAction = .deleteBackward
-        case .delete:
-            canonicalAction = .deleteForward
-        case .enter:
-            canonicalAction = .submit
-        default:
-            canonicalAction = action
-        }
+        let canonicalAction = Self.canonicalAction(for: action)
 
         switch canonicalAction {
         case .insertCharacter(let value):
@@ -74,6 +64,19 @@ public final class InputController {
             break
         case .backspace, .delete, .enter:
             break
+        }
+    }
+
+    static func canonicalAction(for action: KeyboardAction) -> KeyboardAction {
+        switch action {
+        case .backspace:
+            return .deleteBackward
+        case .delete:
+            return .deleteForward
+        case .enter:
+            return .submit
+        default:
+            return action
         }
     }
 
