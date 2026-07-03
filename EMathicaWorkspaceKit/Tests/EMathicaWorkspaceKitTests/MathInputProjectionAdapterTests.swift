@@ -63,4 +63,30 @@ final class MathInputProjectionAdapterTests: XCTestCase {
 
         XCTAssertEqual(first, second)
     }
+
+    func testLatexOutputSnapshotIsReadOnlyAndClean() {
+        let editorState = EditorState(
+            root: .sequence([
+                .template(
+                    TemplateNode(
+                        kind: .fraction,
+                        fields: [
+                            TemplateField(id: .numerator, node: .sequence([.character("x")])),
+                            TemplateField(id: .denominator, node: .sequence([]))
+                        ]
+                    )
+                )
+            ]),
+            cursor: EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.denominator)],
+                offset: 0
+            ),
+            selection: nil
+        )
+        let state = FormulaInputState(editorState: editorState)
+
+        XCTAssertEqual(state.latexOutputSnapshot, #"\frac{x}{}"#)
+        XCTAssertFalse(state.latexOutputSnapshot.contains(#"\cursor{}"#))
+        XCTAssertEqual(state.editorState, editorState)
+    }
 }

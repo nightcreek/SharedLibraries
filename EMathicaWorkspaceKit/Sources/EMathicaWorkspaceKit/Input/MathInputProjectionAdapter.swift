@@ -19,6 +19,14 @@ public enum MathInputProjectionAdapter {
         )
     }
 
+    public static func latexOutput(from editorState: EditorState) -> String {
+        LatexMathRenderer().renderLatex(editorState.root, editing: false)
+    }
+
+    public static func latexOutput(from state: FormulaInputState) -> String {
+        latexOutput(from: state.editorState)
+    }
+
     @available(*, unavailable, message: "WorkspaceKit must mutate editorState through the existing editor pipeline, not by writing MathFormula back into FormulaInputState.")
     public static func replaceEditorState(
         in state: inout FormulaInputState,
@@ -35,5 +43,9 @@ public extension FormulaInputState {
 
     var displayMarkupSnapshot: FormulaDisplayMarkup {
         MathInputProjectionAdapter.displayMarkup(from: self)
+    }
+
+    var latexOutputSnapshot: String {
+        MathInputProjectionAdapter.latexOutput(from: self)
     }
 }
