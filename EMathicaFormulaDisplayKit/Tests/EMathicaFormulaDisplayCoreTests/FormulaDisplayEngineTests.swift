@@ -12,6 +12,7 @@ final class FormulaDisplayEngineTests: XCTestCase {
         XCTAssertGreaterThan(plan.size.width, 0)
         XCTAssertGreaterThan(plan.size.height, 0)
         XCTAssertGreaterThanOrEqual(plan.baseline, 0)
+        XCTAssertNotNil(plan.rootLayoutBox)
     }
 
     func testEmptyMarkupDoesNotCrash() {
@@ -26,7 +27,7 @@ final class FormulaDisplayEngineTests: XCTestCase {
         XCTAssertTrue(
             plan.elements.contains {
                 if case .text(let element) = $0 {
-                    return element.text == "x+1"
+                    return ["x", "+", "1"].contains(element.text)
                 }
                 return false
             }
@@ -48,6 +49,7 @@ final class FormulaDisplayEngineTests: XCTestCase {
         )
         let plan = engine.getPlan(from: "x")
         XCTAssertEqual(plan.hitRegions.count, 1)
+        XCTAssertEqual(plan.rootLayoutBox?.kind, .text)
     }
 
     func testParserBackedPlanStillHandlesDisplayMarkupMarkers() {

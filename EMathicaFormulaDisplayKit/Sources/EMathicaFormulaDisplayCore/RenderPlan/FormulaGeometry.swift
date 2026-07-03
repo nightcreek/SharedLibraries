@@ -38,5 +38,12 @@ public struct FormulaRect: Equatable, Sendable {
     public var maxX: Double { origin.x + size.width }
     public var maxY: Double { origin.y + size.height }
 
+    public func offsetBy(dx: Double, dy: Double) -> FormulaRect {
+        FormulaRect(
+            origin: .init(x: origin.x + dx, y: origin.y + dy),
+            size: size
+        )
+    }
+
     public static let zero = FormulaRect(origin: .zero, size: .zero)
 }

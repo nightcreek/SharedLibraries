@@ -15,74 +15,29 @@ public struct FormulaDisplayEngine: Sendable {
     public func getPlan(from markup: FormulaDisplayMarkup) -> FormulaRenderPlan {
         let parser = FormulaDisplayParser()
         let node = parser.parse(markup)
+        let layout = FormulaLayoutEngine(metrics: metrics).layout(node)
         let visibleText = visibleText(from: node)
+        let bounds = layout.bounds
 
-        let containsCursor = containsCursor(in: node)
-        let containsPlaceholder = containsPlaceholder(in: node)
-
-        let estimatedWidth = max(
-            metrics.minimumBoxSize.width,
-            Double(max(visibleText.count, 1)) * max(metrics.baseFontSize * 0.6, 1)
-        )
-        let estimatedHeight = max(metrics.minimumBoxSize.height, metrics.baseFontSize * 1.4)
-        let baseline = max(metrics.baseFontSize * 0.8, estimatedHeight * 0.5)
-        let bounds = FormulaRect(
-            origin: .zero,
-            size: .init(width: estimatedWidth, height: estimatedHeight)
-        )
-
-        let layout = FormulaLayoutBox(
-            kind: .sequence,
-            frame: bounds,
-            baseline: baseline,
-            children: []
-        )
-
-        var elements: [FormulaRenderElement] = []
-        if !visibleText.isEmpty {
-            elements.append(
-                .text(
-                    .init(
-                        text: visibleText,
-                        role: .raw,
-                        frame: bounds
-                    )
-                )
-            )
+        var elements: [FormulaRenderElement] = collectElements(from: layout, offset: .zero)
+        if !visibleText.isEmpty && !elements.contains(where: {
+            if case .text = $0 { return true }
+            return false
+        }) {
+            elements.append(.text(.init(text: visibleText, role: .raw, frame: bounds)))
         }
 
-        var cursorRects: [FormulaRect] = []
-        if containsCursor && options.cursorVisible {
-            let cursorRect = FormulaRect(
-                origin: .init(x: bounds.maxX, y: 0),
-                size: .init(width: metrics.cursorWidth, height: estimatedHeight)
-            )
-            cursorRects.append(cursorRect)
-            elements.append(.cursor(cursorRect))
-        }
-
-        var placeholderRects: [FormulaRect] = []
-        if containsPlaceholder {
-            let placeholderRect = FormulaRect(
-                origin: .init(
-                    x: max(0, bounds.maxX - metrics.placeholderWidth),
-                    y: max(0, (estimatedHeight - metrics.placeholderHeight) / 2)
-                ),
-                size: .init(width: metrics.placeholderWidth, height: metrics.placeholderHeight)
-            )
-            placeholderRects.append(placeholderRect)
-            elements.append(.placeholder(placeholderRect))
-        }
-
-        let hitRegions = [FormulaHitRegion(id: "root", bounds: bounds)]
-        let debugFrames = options.debugFramesEnabled ? [bounds] : []
+        let cursorRects = options.cursorVisible ? collectRects(of: .cursor, from: layout, offset: .zero) : []
+        let placeholderRects = collectRects(of: .placeholder, from: layout, offset: .zero)
+        let hitRegions = collectHitRegions(from: layout, offset: .zero)
+        let debugFrames = options.debugFramesEnabled ? collectDebugFrames(from: layout, offset: .zero) : []
         if options.debugFramesEnabled {
-            elements.append(.debugFrame(bounds))
+            elements.append(contentsOf: debugFrames.map { .debugFrame($0) })
         }
 
         let plan = FormulaRenderPlan(
-            size: bounds.size,
-            baseline: baseline,
+            size: layout.size,
+            baseline: layout.baseline,
             elements: elements,
             bounds: bounds,
             cursorRects: cursorRects,
@@ -138,57 +93,85 @@ public struct FormulaDisplayEngine: Sendable {
         }
     }
 
-    private func containsCursor(in node: FormulaDisplayNode) -> Bool {
-        switch node {
+    private func collectElements(from box: FormulaLayoutBox, offset: FormulaPoint) -> [FormulaRenderElement] {
+        var result: [FormulaRenderElement] = []
+        let globalBounds = box.bounds.offsetBy(dx: offset.x, dy: offset.y)
+        switch box.kind {
+        case .text, .operatorSymbol, .function, .raw, .error:
+            let text = box.textContent ?? visibleText(from: box)
+            if !text.isEmpty {
+                let role: FormulaTextElement.Role
+                switch box.kind {
+                case .operatorSymbol:
+                    role = .operator
+                case .raw, .error:
+                    role = .raw
+                default:
+                    role = .plain
+                }
+                result.append(.text(.init(text: text, role: role, frame: globalBounds)))
+            }
         case .cursor:
-            return true
-        case .sequence(let items):
-            return items.contains(where: containsCursor(in:))
-        case .function(_, let arguments):
-            return arguments.contains(where: containsCursor(in:))
-        case .fraction(let numerator, let denominator):
-            return containsCursor(in: numerator) || containsCursor(in: denominator)
-        case .sqrt(let radicand):
-            return containsCursor(in: radicand)
-        case .superscript(let base, let exponent):
-            return containsCursor(in: base) || containsCursor(in: exponent)
-        case .subscript(let base, let subscriptNode):
-            return containsCursor(in: base) || containsCursor(in: subscriptNode)
-        case .scriptPair(let base, let subscriptNode, let superscriptNode):
-            return containsCursor(in: base)
-                || subscriptNode.map { containsCursor(in: $0) } == true
-                || superscriptNode.map { containsCursor(in: $0) } == true
-        case .parentheses(let content), .absoluteValue(let content):
-            return containsCursor(in: content)
-        case .text, .operatorSymbol, .placeholder, .raw, .error:
-            return false
+            result.append(.cursor(globalBounds))
+        case .placeholder:
+            result.append(.placeholder(globalBounds))
+        case .fraction, .sqrt, .sequence, .superscript, .subscript, .scriptPair, .parentheses, .absoluteValue:
+            break
         }
+
+        for child in box.children {
+            result.append(contentsOf: collectElements(
+                from: child.box,
+                offset: .init(x: offset.x + child.origin.x, y: offset.y + child.origin.y)
+            ))
+        }
+        return result
     }
 
-    private func containsPlaceholder(in node: FormulaDisplayNode) -> Bool {
-        switch node {
-        case .placeholder:
-            return true
-        case .sequence(let items):
-            return items.contains(where: containsPlaceholder(in:))
-        case .function(_, let arguments):
-            return arguments.contains(where: containsPlaceholder(in:))
-        case .fraction(let numerator, let denominator):
-            return containsPlaceholder(in: numerator) || containsPlaceholder(in: denominator)
-        case .sqrt(let radicand):
-            return containsPlaceholder(in: radicand)
-        case .superscript(let base, let exponent):
-            return containsPlaceholder(in: base) || containsPlaceholder(in: exponent)
-        case .subscript(let base, let subscriptNode):
-            return containsPlaceholder(in: base) || containsPlaceholder(in: subscriptNode)
-        case .scriptPair(let base, let subscriptNode, let superscriptNode):
-            return containsPlaceholder(in: base)
-                || subscriptNode.map { containsPlaceholder(in: $0) } == true
-                || superscriptNode.map { containsPlaceholder(in: $0) } == true
-        case .parentheses(let content), .absoluteValue(let content):
-            return containsPlaceholder(in: content)
-        case .text, .operatorSymbol, .cursor, .raw, .error:
-            return false
+    private func collectRects(of kind: FormulaLayoutBox.Kind, from box: FormulaLayoutBox, offset: FormulaPoint) -> [FormulaRect] {
+        let globalBounds = box.bounds.offsetBy(dx: offset.x, dy: offset.y)
+        var result: [FormulaRect] = box.kind == kind ? [globalBounds] : []
+        for child in box.children {
+            result.append(contentsOf: collectRects(
+                of: kind,
+                from: child.box,
+                offset: .init(x: offset.x + child.origin.x, y: offset.y + child.origin.y)
+            ))
         }
+        return result
+    }
+
+    private func collectHitRegions(from box: FormulaLayoutBox, offset: FormulaPoint) -> [FormulaHitRegion] {
+        let globalBounds = box.bounds.offsetBy(dx: offset.x, dy: offset.y)
+        var result = [FormulaHitRegion(id: box.id.rawValue, bounds: globalBounds)]
+        for child in box.children {
+            result.append(contentsOf: collectHitRegions(
+                from: child.box,
+                offset: .init(x: offset.x + child.origin.x, y: offset.y + child.origin.y)
+            ))
+        }
+        return result
+    }
+
+    private func collectDebugFrames(from box: FormulaLayoutBox, offset: FormulaPoint) -> [FormulaRect] {
+        let globalBounds = box.bounds.offsetBy(dx: offset.x, dy: offset.y)
+        var result = [globalBounds]
+        for child in box.children {
+            result.append(contentsOf: collectDebugFrames(
+                from: child.box,
+                offset: .init(x: offset.x + child.origin.x, y: offset.y + child.origin.y)
+            ))
+        }
+        return result
+    }
+
+    private func visibleText(from box: FormulaLayoutBox) -> String {
+        if let textContent = box.textContent {
+            return textContent
+        }
+        if box.children.isEmpty {
+            return ""
+        }
+        return box.children.map { visibleText(from: $0.box) }.joined()
     }
 }
