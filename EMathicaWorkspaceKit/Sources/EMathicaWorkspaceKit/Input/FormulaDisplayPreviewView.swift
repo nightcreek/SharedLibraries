@@ -1,4 +1,3 @@
-import EMathicaFormulaDisplayCore
 import EMathicaFormulaDisplaySwiftUI
 import SwiftUI
 

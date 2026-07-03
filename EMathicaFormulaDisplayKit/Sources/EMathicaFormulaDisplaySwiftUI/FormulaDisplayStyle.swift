@@ -1,3 +1,4 @@
+import EMathicaFormulaDisplayCore
 import SwiftUI
 
 public struct FormulaDisplayStyle {
@@ -29,8 +30,8 @@ public struct FormulaDisplayStyle {
         radicalColor: Color = .primary,
         delimiterColor: Color = .primary,
         debugColor: Color = .red.opacity(0.6),
-        baseFont: Font = .system(size: 16),
-        scriptScale: CGFloat = 0.8
+        baseFont: Font = .system(size: FormulaLayoutMetrics.default.baseFontSize),
+        scriptScale: CGFloat = FormulaLayoutMetrics.default.scriptScale
     ) {
         self.textColor = textColor
         self.operatorColor = operatorColor

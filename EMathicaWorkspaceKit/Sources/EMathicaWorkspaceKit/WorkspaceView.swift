@@ -700,37 +700,44 @@ private struct WorkspaceInlineInputDock: View {
                 quickStartTemplateStrip
             }
 
+            if state.isInputPresented {
                 FormulaEditorView(
                     editorState: state.formulaInputState.editorState,
                     isFocused: state.focus == .formulaEditor,
-                onTapCursor: { cursor in
-                    state.focusEditor(at: cursor)
-                    if !state.isInputPresented {
-                        state.dispatch(.openInput(mode: .expression))
+                    onTapCursor: { cursor in
+                        state.focusEditor(at: cursor)
+                        if !state.isInputPresented {
+                            state.dispatch(.openInput(mode: .expression))
+                        }
+                    },
+                    onKeyboardAction: { action in
+                        state.handleKeyboardAction(action)
                     }
-                },
-                onKeyboardAction: { action in
-                    state.handleKeyboardAction(action)
-                }
-            )
-            .allowsHitTesting(
-                state.isInputPresented || WorkspaceInlineInputVisualMetrics.formulaContentHitTestingWhenClosed
-            )
-            .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .bottomLeading) {
-                if let presentation = draftDiagnosticPresentation {
-                    HStack(spacing: 5) {
-                        Image(systemName: diagnosticIconName(for: presentation.severity))
-                            .font(.system(size: 10, weight: .semibold))
-                        Text(presentation.message)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                )
+                .allowsHitTesting(
+                    state.isInputPresented || WorkspaceInlineInputVisualMetrics.formulaContentHitTestingWhenClosed
+                )
+                .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .bottomLeading) {
+                    if let presentation = draftDiagnosticPresentation {
+                        HStack(spacing: 5) {
+                            Image(systemName: diagnosticIconName(for: presentation.severity))
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(presentation.message)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(diagnosticColor(for: presentation.severity))
                     }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(diagnosticColor(for: presentation.severity))
                 }
+            } else {
+                FormulaDisplayPreviewView(inputState: state.formulaInputState)
+                    .allowsHitTesting(false)
+                    .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if state.isInputPresented, let commitErrorMessage = state.commitErrorMessage {

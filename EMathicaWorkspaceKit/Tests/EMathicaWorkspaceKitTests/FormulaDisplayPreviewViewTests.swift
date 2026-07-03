@@ -1,3 +1,5 @@
+import EMathicaFormulaDisplayCore
+import EMathicaMathInputCore
 import SwiftUI
 import XCTest
 @testable import EMathicaWorkspaceKit
@@ -46,5 +48,50 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
     func testWorkspaceKitCanImportFormulaDisplaySwiftUIThroughPreviewBridge() {
         let view = FormulaDisplayPreviewView(rawValue: #"\frac{x}{\placeholder{}}"#)
         XCTAssertNotNil(view)
+    }
+
+    func testMathInputDisplayoutFeedsFormulaDisplayEngine() {
+        let session = MathInputSession()
+        session.input(.template(.fraction))
+        session.input(.char("x"))
+        session.input(.control(.nextSlot))
+
+        let state = FormulaInputState(editorState: session.editorState)
+
+        let rawValue = state.displayMarkupSnapshot.rawValue
+        let plan = FormulaDisplayEngine().getPlan(from: .init(rawValue: rawValue))
+
+        XCTAssertTrue(rawValue.contains(#"\frac"#))
+        XCTAssertTrue(rawValue.contains(#"\cursor{}"#))
+        XCTAssertTrue(rawValue.contains(#"\placeholder{}"#))
+        XCTAssertFalse(plan.elements.isEmpty)
+        XCTAssertGreaterThan(plan.size.width, 0)
+        XCTAssertGreaterThan(plan.size.height, 0)
+        XCTAssertFalse(plan.cursorRects.isEmpty)
+        XCTAssertFalse(plan.placeholderRects.isEmpty)
+    }
+
+    func testRawLatexFallbackRemainsVisibleAcrossDisplayBridge() {
+        let state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([.character(".")]),
+                cursor: EditorCursor(path: [], offset: 1),
+                selection: nil
+            )
+        )
+
+        let rawValue = state.displayMarkupSnapshot.rawValue
+        let plan = FormulaDisplayEngine().getPlan(from: .init(rawValue: rawValue))
+
+        XCTAssertFalse(rawValue.isEmpty)
+        XCTAssertFalse(plan.elements.isEmpty)
+        XCTAssertTrue(
+            plan.elements.contains { element in
+                if case .text(let text) = element {
+                    return !text.text.isEmpty
+                }
+                return false
+            }
+        )
     }
 }
