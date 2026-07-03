@@ -26,7 +26,9 @@ final class QuickStartExpressionTemplateTests: XCTestCase {
             return
         }
         XCTAssertEqual(session.mode, .createNew)
-        XCTAssertEqual(state.formulaInputState.source, QuickStartExpressionTemplate.polarCurve.previewText)
+        // Quick start previews are human-readable, but the active editor source is the
+        // parser/serializer round-trip form used by FormulaInputState.
+        XCTAssertEqual(state.formulaInputState.source, "r=1+cos(theta)")
         XCTAssertEqual(state.inputSessionModeBadgeText, "新建")
         XCTAssertEqual(state.inputSessionPrimaryTitle, "输入函数或表达式")
         XCTAssertEqual(state.inputSessionSecondaryTitle, "支持函数、参数曲线、极坐标等二维表达式入口")
@@ -60,7 +62,7 @@ final class QuickStartExpressionTemplateTests: XCTestCase {
 
         state.startQuickStartExpressionTemplate(.point, openKeyboard: false)
 
-        XCTAssertEqual(state.formulaInputState.source, "A = (1, 2)")
+        XCTAssertEqual(state.formulaInputState.source, "A=(1,2)")
         XCTAssertEqual(state.inputSessionModeBadgeText, "新建")
         guard let intent = state.formulaInputState.semanticState.graphClassification?.intent else {
             XCTFail("Expected point quick start to produce a semantic intent")
