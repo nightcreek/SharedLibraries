@@ -44,6 +44,7 @@ public struct FormulaLayoutBox: Equatable, Sendable {
     public var children: [FormulaLayoutChild]
     public var bounds: FormulaRect
     public var textContent: String?
+    public var textRole: FormulaTextRole?
 
     public init(
         id: FormulaLayoutID,
@@ -52,7 +53,8 @@ public struct FormulaLayoutBox: Equatable, Sendable {
         baseline: Double,
         children: [FormulaLayoutChild],
         bounds: FormulaRect,
-        textContent: String? = nil
+        textContent: String? = nil,
+        textRole: FormulaTextRole? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -61,5 +63,6 @@ public struct FormulaLayoutBox: Equatable, Sendable {
         self.children = children
         self.bounds = bounds
         self.textContent = textContent
+        self.textRole = textRole
     }
 }

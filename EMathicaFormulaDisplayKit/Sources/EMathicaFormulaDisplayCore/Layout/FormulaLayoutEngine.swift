@@ -19,8 +19,8 @@ public struct FormulaLayoutEngine: Sendable {
         switch node {
         case .sequence(let items):
             return layoutSequence(items, metrics: metrics, path: path)
-        case .text(let value, _):
-            return layoutText(value, kind: .text, metrics: metrics, path: path)
+        case .text(let value, let role):
+            return layoutText(value, kind: .text, textRole: role, metrics: metrics, path: path)
         case .operatorSymbol(let value):
             return layoutText(value, kind: .operatorSymbol, metrics: metrics, path: path)
         case .function(let name, let arguments):
@@ -34,7 +34,13 @@ public struct FormulaLayoutEngine: Sendable {
         case .subscript(let base, let subscriptNode):
             return layoutSubscript(base: base, subscriptNode: subscriptNode, metrics: metrics, path: path)
         case .scriptPair(let base, let subscriptNode, let superscriptNode):
-            return layoutScriptPair(base: base, subscriptNode: subscriptNode, superscriptNode: superscriptNode, metrics: metrics, path: path)
+            return layoutScriptPair(
+                base: base,
+                subscriptNode: subscriptNode,
+                superscriptNode: superscriptNode,
+                metrics: metrics,
+                path: path
+            )
         case .parentheses(let content):
             return layoutDelimited(content: content, kind: .parentheses, metrics: metrics, path: path)
         case .absoluteValue(let content):
@@ -44,9 +50,23 @@ public struct FormulaLayoutEngine: Sendable {
         case .placeholder:
             return layoutPlaceholder(metrics: metrics, path: path)
         case .raw(let value):
-            return layoutText(value, kind: .raw, metrics: metrics, path: path, horizontalPadding: metrics.rawFallbackPadding)
+            return layoutText(
+                value,
+                kind: .raw,
+                textRole: .raw,
+                metrics: metrics,
+                path: path,
+                horizontalPadding: metrics.rawFallbackPadding
+            )
         case .error(let error):
-            return layoutText(error.rawText, kind: .error, metrics: metrics, path: path, horizontalPadding: metrics.rawFallbackPadding)
+            return layoutText(
+                error.rawText,
+                kind: .error,
+                textRole: .raw,
+                metrics: metrics,
+                path: path,
+                horizontalPadding: metrics.rawFallbackPadding
+            )
         }
     }
 
@@ -72,7 +92,8 @@ public struct FormulaLayoutEngine: Sendable {
         let childBoxes = items.enumerated().map {
             layout($0.element, metrics: metrics, path: "\(path).s\($0.offset)")
         }
-        let baseline = childBoxes.map(\.baseline).max() ?? max(metrics.baseFontSize * 0.8, metrics.minimumBoxSize.height * 0.5)
+        let baseline = childBoxes.map(\.baseline).max()
+            ?? max(metrics.baseFontSize * 0.8, metrics.minimumBoxSize.height * 0.5)
 
         var positioned: [FormulaLayoutChild] = []
         var x = 0.0
@@ -93,7 +114,10 @@ public struct FormulaLayoutEngine: Sendable {
             }
         }
 
-        let size = FormulaSize(width: max(x, metrics.minimumBoxSize.width * 0.5), height: max(maxBottom, metrics.minimumBoxSize.height))
+        let size = FormulaSize(
+            width: max(x, metrics.minimumBoxSize.width * 0.5),
+            height: max(maxBottom, metrics.minimumBoxSize.height)
+        )
         return makeBox(
             id: path,
             kind: .sequence,
@@ -107,6 +131,7 @@ public struct FormulaLayoutEngine: Sendable {
     private func layoutText(
         _ value: String,
         kind: FormulaLayoutBox.Kind,
+        textRole: FormulaTextRole? = nil,
         metrics: FormulaLayoutMetrics,
         path: String,
         horizontalPadding: Double = 0
@@ -125,7 +150,8 @@ public struct FormulaLayoutEngine: Sendable {
             baseline: min(height, metrics.baseFontSize * 0.8),
             children: [],
             bounds: .init(origin: .zero, size: size),
-            textContent: value
+            textContent: value,
+            textRole: textRole
         )
     }
 
@@ -140,11 +166,7 @@ public struct FormulaLayoutEngine: Sendable {
             layout($0.element, metrics: metrics, path: "\(path).arg\($0.offset)")
         }
 
-        let baseline = max(
-            nameBox.baseline,
-            argumentBoxes.map(\.baseline).max() ?? 0
-        )
-
+        let baseline = max(nameBox.baseline, argumentBoxes.map(\.baseline).max() ?? 0)
         var children: [FormulaLayoutChild] = []
         var x = 0.0
         children.append(.init(box: nameBox, origin: .init(x: x, y: baseline - nameBox.baseline)))
@@ -184,7 +206,7 @@ public struct FormulaLayoutEngine: Sendable {
         let lineY = numeratorBox.size.height + metrics.fractionVerticalGap
         let denominatorY = lineY + metrics.fractionLineThickness + metrics.fractionVerticalGap
         let totalHeight = denominatorY + denominatorBox.size.height
-        let baseline = numeratorBox.size.height + metrics.fractionVerticalGap + (metrics.fractionLineThickness / 2)
+        let baseline = numeratorBox.size.height + metrics.fractionVerticalGap + metrics.fractionLineThickness / 2
 
         let numeratorX = (lineWidth - numeratorBox.size.width) / 2
         let denominatorX = (lineWidth - denominatorBox.size.width) / 2
@@ -297,9 +319,7 @@ public struct FormulaLayoutEngine: Sendable {
         let parentBaseline = baseBox.baseline
         let scriptColumnWidth = max(subscriptBox?.size.width ?? 0, superscriptBox?.size.width ?? 0)
 
-        var placements: [(FormulaLayoutBox, FormulaPoint)] = [
-            (baseBox, .zero)
-        ]
+        var placements: [(FormulaLayoutBox, FormulaPoint)] = [(baseBox, .zero)]
 
         if let superscriptBox {
             let y = parentBaseline - metrics.scriptVerticalRaise - superscriptBox.baseline
@@ -322,10 +342,7 @@ public struct FormulaLayoutEngine: Sendable {
         }
 
         let height = children.map { $0.origin.y + $0.box.size.height }.max() ?? baseBox.size.height
-        let size = FormulaSize(
-            width: baseBox.size.width + scriptColumnWidth,
-            height: max(height, metrics.minimumBoxSize.height)
-        )
+        let size = FormulaSize(width: baseBox.size.width + scriptColumnWidth, height: max(height, metrics.minimumBoxSize.height))
 
         return makeBox(
             id: path,
@@ -413,7 +430,8 @@ public struct FormulaLayoutEngine: Sendable {
         baseline: Double,
         children: [FormulaLayoutChild],
         bounds: FormulaRect,
-        textContent: String? = nil
+        textContent: String? = nil,
+        textRole: FormulaTextRole? = nil
     ) -> FormulaLayoutBox {
         FormulaLayoutBox(
             id: .init(id),
@@ -422,7 +440,8 @@ public struct FormulaLayoutEngine: Sendable {
             baseline: baseline,
             children: children,
             bounds: bounds,
-            textContent: textContent
+            textContent: textContent,
+            textRole: textRole
         )
     }
 }

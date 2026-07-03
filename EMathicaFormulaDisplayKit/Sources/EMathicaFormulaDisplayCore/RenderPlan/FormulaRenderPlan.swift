@@ -1,12 +1,22 @@
 import Foundation
 
-public struct FormulaHitRegion: Equatable, Sendable {
-    public var id: String
-    public var bounds: FormulaRect
+public enum FormulaHitRegionKind: Equatable, Sendable {
+    case node
+    case cursor
+    case placeholder
+    case text
+    case structure
+}
 
-    public init(id: String, bounds: FormulaRect) {
+public struct FormulaHitRegion: Equatable, Sendable {
+    public var id: FormulaLayoutID
+    public var frame: FormulaRect
+    public var kind: FormulaHitRegionKind
+
+    public init(id: FormulaLayoutID, frame: FormulaRect, kind: FormulaHitRegionKind) {
         self.id = id
-        self.bounds = bounds
+        self.frame = frame
+        self.kind = kind
     }
 }
 
