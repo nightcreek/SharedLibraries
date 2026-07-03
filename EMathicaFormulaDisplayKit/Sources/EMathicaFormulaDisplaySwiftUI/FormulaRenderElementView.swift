@@ -1,0 +1,130 @@
+import EMathicaFormulaDisplayCore
+import SwiftUI
+
+struct FormulaRenderElementView: View {
+    let element: FormulaRenderElement
+    let style: FormulaDisplayStyle
+    let showsCursor: Bool
+    let showsDebugFrames: Bool
+
+    var body: some View {
+        switch element {
+        case .text(let text):
+            Text(text.text)
+                .font(font(for: text))
+                .foregroundStyle(color(for: text))
+                .frame(width: max(text.frame.size.width, 1), height: max(text.frame.size.height, 1), alignment: .center)
+                .position(
+                    x: text.frame.origin.x + text.frame.size.width / 2,
+                    y: text.frame.origin.y + text.frame.size.height / 2
+                )
+        case .line(let line):
+            Rectangle()
+                .fill(color(for: line))
+                .frame(width: max(line.frame.size.width, 1), height: max(line.frame.size.height, 1))
+                .position(
+                    x: line.frame.origin.x + line.frame.size.width / 2,
+                    y: line.frame.origin.y + line.frame.size.height / 2
+                )
+        case .radical(let radical):
+            Path { path in
+                let rect = radical.frame
+                let startX = rect.origin.x
+                let startY = rect.maxY
+                path.move(to: CGPoint(x: startX, y: startY - rect.size.height * 0.28))
+                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.18, y: startY))
+                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.34, y: rect.origin.y + rect.size.height * 0.18))
+                path.addLine(to: CGPoint(x: radical.overlineStart.x, y: radical.overlineStart.y))
+                path.addLine(to: CGPoint(x: radical.overlineEnd.x, y: radical.overlineEnd.y))
+            }
+            .stroke(color(for: radical), lineWidth: 1)
+        case .cursor(let cursor):
+            if showsCursor {
+                Rectangle()
+                    .fill(style.cursorColor)
+                    .frame(width: max(cursor.frame.size.width, 1), height: max(cursor.frame.size.height, 1))
+                    .position(
+                        x: cursor.frame.origin.x + cursor.frame.size.width / 2,
+                        y: cursor.frame.origin.y + cursor.frame.size.height / 2
+                    )
+            }
+        case .placeholder(let placeholder):
+            RoundedRectangle(cornerRadius: 3)
+                .fill(style.placeholderFillColor)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(style.placeholderStrokeColor, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                }
+                .frame(width: max(placeholder.frame.size.width, 1), height: max(placeholder.frame.size.height, 1))
+                .position(
+                    x: placeholder.frame.origin.x + placeholder.frame.size.width / 2,
+                    y: placeholder.frame.origin.y + placeholder.frame.size.height / 2
+                )
+        case .debugFrame(let debugFrame):
+            if showsDebugFrames {
+                Rectangle()
+                    .stroke(style.debugColor, lineWidth: 1)
+                    .frame(width: max(debugFrame.frame.size.width, 1), height: max(debugFrame.frame.size.height, 1))
+                    .position(
+                        x: debugFrame.frame.origin.x + debugFrame.frame.size.width / 2,
+                        y: debugFrame.frame.origin.y + debugFrame.frame.size.height / 2
+                    )
+            }
+        }
+    }
+
+    private func font(for element: FormulaTextElement) -> Font {
+        let estimatedSize = max(element.frame.size.height * 0.72, 8)
+        switch element.fontRole {
+        case .script:
+            return .system(size: estimatedSize * style.scriptScale)
+        case .normal, .operatorSymbol, .function, .raw, .error:
+            return style.baseFont
+        }
+    }
+
+    private func color(for element: FormulaTextElement) -> Color {
+        switch element.fontRole {
+        case .operatorSymbol:
+            return style.operatorColor
+        case .function:
+            return style.functionColor
+        case .raw:
+            return style.rawTextColor
+        case .error:
+            return style.errorTextColor
+        case .normal, .script:
+            return style.textColor
+        }
+    }
+
+    private func color(for element: FormulaLineElement) -> Color {
+        switch element.role {
+        case .fractionLine:
+            return style.fractionLineColor
+        case .radical:
+            return style.radicalColor
+        case .delimiter:
+            return style.delimiterColor
+        case .cursor:
+            return style.cursorColor
+        case .debug:
+            return style.debugColor
+        }
+    }
+
+    private func color(for element: FormulaRadicalElement) -> Color {
+        switch element.role {
+        case .radical:
+            return style.radicalColor
+        case .debug:
+            return style.debugColor
+        case .fractionLine:
+            return style.fractionLineColor
+        case .cursor:
+            return style.cursorColor
+        case .delimiter:
+            return style.delimiterColor
+        }
+    }
+}
