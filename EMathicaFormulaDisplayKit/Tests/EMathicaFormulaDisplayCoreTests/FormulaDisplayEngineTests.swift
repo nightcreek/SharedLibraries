@@ -31,6 +31,14 @@ final class FormulaDisplayEngineTests: XCTestCase {
                 return false
             }
         )
+        XCTAssertEqual(
+            plan.rootNode,
+            .sequence([
+                .text("x", role: .symbol),
+                .operatorSymbol("+"),
+                .text("1", role: .number)
+            ])
+        )
     }
 
     func testCoreSurfaceCompilesWithoutSwiftUITypes() {
@@ -40,5 +48,21 @@ final class FormulaDisplayEngineTests: XCTestCase {
         )
         let plan = engine.getPlan(from: "x")
         XCTAssertEqual(plan.hitRegions.count, 1)
+    }
+
+    func testParserBackedPlanStillHandlesDisplayMarkupMarkers() {
+        let plan = FormulaDisplayEngine().getPlan(
+            from: FormulaDisplayMarkup(rawValue: #"\frac{x}{\cursor{}\placeholder{}}"#)
+        )
+
+        XCTAssertFalse(plan.cursorRects.isEmpty)
+        XCTAssertFalse(plan.placeholderRects.isEmpty)
+        XCTAssertEqual(
+            plan.rootNode,
+            .fraction(
+                numerator: .text("x", role: .symbol),
+                denominator: .sequence([.cursor, .placeholder])
+            )
+        )
     }
 }
