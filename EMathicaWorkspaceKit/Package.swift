@@ -17,7 +17,8 @@ let package = Package(
         .package(path: "../EMathicaMathCore"),
         .package(path: "../EMathicaDocumentKit"),
         .package(path: "../EMathicaThemeKit"),
-        .package(path: "../EMathicaMathInputKit")
+        .package(path: "../EMathicaMathInputKit"),
+        .package(path: "../EMathicaFormulaDisplayKit")
     ],
     targets: [
         .target(
@@ -26,7 +27,8 @@ let package = Package(
                 "EMathicaMathCore",
                 "EMathicaDocumentKit",
                 "EMathicaThemeKit",
-                .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit")
+                .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit"),
+                .product(name: "EMathicaFormulaDisplaySwiftUI", package: "EMathicaFormulaDisplayKit")
             ],
             path: "Sources/EMathicaWorkspaceKit"
         ),
