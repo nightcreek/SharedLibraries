@@ -188,8 +188,23 @@ public enum MathFormulaProjection {
                     arguments: arguments
                 )
             )
-        default:
-            return .rawLatex(LatexMathRenderer().renderLatex(.template(template), editing: false))
+        case .nthRoot,
+             .subscriptSuperscript,
+             .brackets,
+             .braces,
+             .vector,
+             .overline,
+             .hat,
+             .limit,
+             .sum,
+             .product,
+             .integral,
+             .matrix,
+             .cases,
+             .piecewise,
+             .parametricEquation2D,
+             .parametricEquation3D:
+            return fallbackRawLatex(for: template)
         }
     }
 
@@ -225,6 +240,10 @@ public enum MathFormulaProjection {
         default:
             return false
         }
+    }
+
+    private static func fallbackRawLatex(for template: TemplateNode) -> MathFormula {
+        .rawLatex(LatexMathRenderer().renderLatex(.template(template), editing: false))
     }
 
     private static func isNumberFragmentCharacter(_ character: Character) -> Bool {

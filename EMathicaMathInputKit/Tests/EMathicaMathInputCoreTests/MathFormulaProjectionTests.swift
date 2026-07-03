@@ -159,6 +159,53 @@ final class MathFormulaProjectionTests: XCTestCase {
         XCTAssertTrue(value.contains("\\begin{cases}"))
     }
 
+    func testAdditionalUnsupportedTemplatesUseStableRawLatexFallback() {
+        let root = MathNode.sequence([
+            .template(
+                TemplateNode(
+                    kind: .nthRoot,
+                    fields: [
+                        TemplateField(id: .rootIndex, node: .sequence([.character("3")])),
+                        TemplateField(id: .radicand, node: .sequence([.character("x")]))
+                    ]
+                )
+            ),
+            .template(
+                TemplateNode(
+                    kind: .subscriptSuperscript,
+                    fields: [
+                        TemplateField(id: .base, node: .sequence([.character("a")])),
+                        TemplateField(id: .subscriptField, node: .sequence([.character("1")])),
+                        TemplateField(id: .exponent, node: .sequence([.character("2")]))
+                    ]
+                )
+            ),
+            .template(
+                TemplateNode(
+                    kind: .matrix(rows: 1, cols: 2),
+                    fields: [
+                        TemplateField(id: .matrixCell(row: 0, col: 0), node: .sequence([.character("x")])),
+                        TemplateField(id: .matrixCell(row: 0, col: 1), node: .sequence([.character("y")]))
+                    ]
+                )
+            )
+        ])
+
+        guard case .sequence(let items) = MathFormulaProjection.project(root) else {
+            return XCTFail("Expected projected sequence")
+        }
+
+        XCTAssertEqual(items.count, 3)
+        XCTAssertEqual(items[0], .rawLatex(#"\sqrt[3]{x}"#))
+        XCTAssertEqual(items[1], .rawLatex("a_{1}^{2}"))
+
+        guard case .rawLatex(let matrixLatex) = items[2] else {
+            return XCTFail("Expected matrix fallback, got \(items[2])")
+        }
+        XCTAssertTrue(matrixLatex.contains(#"\begin{pmatrix}"#))
+        XCTAssertTrue(matrixLatex.contains("x&y"))
+    }
+
     func testSessionFormulaReflectsStructuredProjection() {
         let session = MathInputSession()
 

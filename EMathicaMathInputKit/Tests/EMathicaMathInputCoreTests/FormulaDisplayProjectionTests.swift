@@ -58,7 +58,33 @@ final class FormulaDisplayProjectionTests: XCTestCase {
         let markup = FormulaDisplayProjection.displayout(source: formula, cursor: cursor)
 
         XCTAssertEqual(formula, .sequence([.symbol("x")]))
-        XCTAssertEqual(markup.rawValue, "x")
+        XCTAssertEqual(markup.rawValue, #"x\cursor{}"#)
+    }
+
+    func testDisplayProjectionInjectsCursorIntoTemplateFieldWithoutMutatingFormula() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .fraction,
+                    fields: [
+                        .sequence([.symbol("x")]),
+                        .sequence([])
+                    ]
+                )
+            )
+        ])
+        let cursor = FormulaDisplayCursorState(
+            editorCursor: EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.denominator)],
+                offset: 0
+            )
+        )
+
+        let before = formula
+        let markup = FormulaDisplayProjection.displayout(source: formula, cursor: cursor)
+
+        XCTAssertEqual(formula, before)
+        XCTAssertEqual(markup.rawValue, #"\frac{x}{\cursor{}\placeholder{}}"#)
     }
 
     func testProjectionSnapshotValidationAcceptsCurrentFormulaValues() {

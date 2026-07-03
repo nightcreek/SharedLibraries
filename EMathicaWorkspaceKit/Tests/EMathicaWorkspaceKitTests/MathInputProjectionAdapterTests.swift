@@ -43,7 +43,7 @@ final class MathInputProjectionAdapterTests: XCTestCase {
         let markup = state.displayMarkupSnapshot
 
         XCTAssertEqual(state.editorState, before)
-        XCTAssertEqual(markup.rawValue, #"\frac{x}{\placeholder{}}"#)
+        XCTAssertEqual(markup.rawValue, #"\frac{x}{\placeholder{}}\cursor{}"#)
     }
 
     func testProjectionAdapterReadsStableSnapshotsAcrossCursorChanges() throws {
