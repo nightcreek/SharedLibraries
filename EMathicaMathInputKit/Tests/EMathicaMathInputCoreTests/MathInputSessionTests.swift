@@ -95,4 +95,78 @@ final class MathInputSessionTests: XCTestCase {
         )
         XCTAssertEqual(session.displayout().rawValue, #"x+1\cursor{}"#)
     }
+
+    func testInputTokenFacadeCoversCoreTokenKinds() {
+        let session = MathInputSession()
+
+        session.input(.char("x"))
+        session.input(.template(.superscript))
+        session.input(.number("2"))
+        session.input(.control(.nextSlot))
+        session.input(.op("+"))
+        session.input(.template(.fraction))
+        session.input(.char("1"))
+        session.input(.control(.nextSlot))
+        session.input(.number("2"))
+        session.input(.control(.previousSlot))
+        session.input(.control(.moveLeft))
+        session.input(.control(.deleteBackward))
+        session.input(.function("sin"))
+        session.input(.char("x"))
+
+        XCTAssertTrue(session.latexout().contains(#"\sin(x)"#))
+        XCTAssertFalse(session.latexout().contains(#"\cursor{}"#))
+        XCTAssertNotEqual(session.formula(), .sequence([]))
+    }
+
+    func testInputControlUndoAndRedoUseSessionHistory() {
+        let session = MathInputSession()
+
+        session.input(.char("x"))
+        session.input(.op("+"))
+        session.input(.number("1"))
+        XCTAssertEqual(session.latexout(), "x+1")
+
+        session.input(.control(.undo))
+        XCTAssertEqual(session.latexout(), "x+")
+
+        session.input(.control(.redo))
+        XCTAssertEqual(session.latexout(), "x+1")
+    }
+
+    func testLatexinSupportsCoreSubsetAndContinuesEditingAST() {
+        let session = MathInputSession()
+
+        XCTAssertTrue(session.latexin(#"\frac{x}{2}"#))
+        XCTAssertEqual(session.latexout(), #"\frac{x}{2}"#)
+        XCTAssertEqual(session.displayout().rawValue, #"\frac{x}{2}\cursor{}"#)
+
+        session.input(.op("+"))
+        session.input(.number("1"))
+
+        XCTAssertEqual(session.latexout(), #"\frac{x}{2}+1"#)
+    }
+
+    func testLatexinSupportsFunctionsParenthesesAndAbsoluteValueSubset() {
+        let cases: [(String, String)] = [
+            ("x", "x"),
+            ("x+1", "x+1"),
+            ("x^2", "x^{2}"),
+            (#"\sqrt{x}"#, #"\sqrt{x}"#),
+            (#"\sin(x)"#, #"\sin(x)"#),
+            (#"\cos(x)"#, #"\cos(x)"#),
+            (#"\tan(x)"#, #"\tan(x)"#),
+            (#"\ln(x)"#, #"\ln(x)"#),
+            (#"\log(x)"#, #"\log(x)"#),
+            ("(x+1)", "(x+1)"),
+            ("|x|", #"\left|x\right|"#)
+        ]
+
+        for (input, expectedLatex) in cases {
+            let session = MathInputSession()
+            XCTAssertTrue(session.latexin(input), "Expected latexin to accept \(input)")
+            XCTAssertEqual(session.latexout(), expectedLatex)
+            XCTAssertFalse(session.displayout().rawValue.isEmpty)
+        }
+    }
 }

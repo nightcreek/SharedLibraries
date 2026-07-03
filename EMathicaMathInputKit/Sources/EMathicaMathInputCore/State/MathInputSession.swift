@@ -11,6 +11,7 @@ public final class MathInputSession: ObservableObject {
     private let sourceSerializer: SourceSerializer
     private let latexRenderer: LatexMathRenderer
     private let computeSerializer: ComputeSerializer
+    private let parser: SimpleMathParser
     private var undoStack: [EditorState]
     private var redoStack: [EditorState]
 
@@ -20,6 +21,7 @@ public final class MathInputSession: ObservableObject {
         self.sourceSerializer = SourceSerializer()
         self.latexRenderer = LatexMathRenderer()
         self.computeSerializer = ComputeSerializer()
+        self.parser = SimpleMathParser()
         self.undoStack = []
         self.redoStack = []
         self.sourceText = ""
@@ -54,6 +56,51 @@ public final class MathInputSession: ObservableObject {
             source: formula(),
             cursor: FormulaDisplayCursorState(editorCursor: editorState.cursor)
         )
+    }
+
+    /// Applies a first-version public input token by translating it into the
+    /// existing editor-layer action pipeline or session-level control flow.
+    public func input(_ token: MathInputToken) {
+        switch token {
+        case .char(let value):
+            normalizedScalarSequence(from: value).forEach { apply(.insertCharacter($0)) }
+        case .number(let value):
+            normalizedScalarSequence(from: value).forEach { apply(.insertCharacter($0)) }
+        case .op(let value):
+            let normalized = MathInputCharacterNormalizer.normalize(value)
+            guard !normalized.isEmpty else { return }
+            apply(.insertOperator(normalized))
+        case .function(let value):
+            let normalized = MathInputCharacterNormalizer.normalize(value).lowercased()
+            guard !normalized.isEmpty else { return }
+            apply(.insertFunction(normalized))
+        case .template(let value):
+            apply(.insertTemplate(templateKind(for: value)))
+        case .control(let value):
+            handleControlToken(value)
+        }
+    }
+
+    /// Imports a whole-expression LaTeX string into the editor layer. Import is
+    /// parse-then-edit: the resulting editable state is still AST-backed.
+    @discardableResult
+    public func latexin(_ latex: String) -> Bool {
+        let normalized = MathInputCharacterNormalizer.normalize(latex)
+        guard let parsed = parser.parseLatex(normalized) else { return false }
+
+        let importedRoot = normalizedImportRoot(parsed)
+        let importedState = EditorState(
+            root: importedRoot,
+            cursor: cursorAtEnd(of: importedRoot),
+            selection: nil
+        )
+
+        guard importedState != editorState else { return true }
+
+        recordUndoSnapshot(editorState)
+        editorState = importedState
+        syncDerivedStrings()
+        return true
     }
 
     public var canUndo: Bool {
@@ -106,6 +153,71 @@ public final class MathInputSession: ObservableObject {
     private func recordUndoSnapshot(_ snapshot: EditorState) {
         undoStack.append(snapshot)
         redoStack.removeAll()
+    }
+
+    private func normalizedScalarSequence(from value: String) -> [String] {
+        let normalized = MathInputCharacterNormalizer.normalize(value)
+        return normalized.map { String($0) }
+    }
+
+    private func templateKind(for token: MathInputTemplateToken) -> TemplateKind {
+        switch token {
+        case .fraction:
+            return .fraction
+        case .sqrt:
+            return .sqrt
+        case .superscript:
+            return .superscript
+        case .subscript:
+            return .subscriptTemplate
+        case .parentheses:
+            return .parentheses
+        case .absoluteValue:
+            return .absoluteValue
+        }
+    }
+
+    private func handleControlToken(_ token: MathInputControlToken) {
+        switch token {
+        case .moveLeft:
+            apply(.moveLeft)
+        case .moveRight:
+            apply(.moveRight)
+        case .moveUp:
+            apply(.moveUp)
+        case .moveDown:
+            apply(.moveDown)
+        case .nextSlot:
+            apply(.tab)
+        case .previousSlot:
+            apply(.shiftTab)
+        case .deleteBackward:
+            apply(.deleteBackward)
+        case .deleteForward:
+            apply(.deleteForward)
+        case .submit:
+            apply(.submit)
+        case .cancel:
+            apply(.cancel)
+        case .undo:
+            undo()
+        case .redo:
+            redo()
+        }
+    }
+
+    private func normalizedImportRoot(_ parsed: MathNode) -> MathNode {
+        if case .sequence = parsed {
+            return parsed
+        }
+        return .sequence([parsed])
+    }
+
+    private func cursorAtEnd(of root: MathNode) -> EditorCursor {
+        if case .sequence(let nodes) = root {
+            return EditorCursor(path: [], offset: nodes.count)
+        }
+        return EditorCursor(path: [], offset: 0)
     }
 
     private func clearHistory() {

@@ -502,49 +502,332 @@ public struct SimpleMathParser: MathParser {
 
     public func parseLatex(_ latex: String) -> MathNode? {
         Self.parseInvocationCount += 1
-        return parseSource(latex)
+        let normalized = MathInputCharacterNormalizer.normalize(latex)
+        var parser = Parser(input: normalized, latexMode: true)
+        return parser.parse()
     }
 
     public func parseSource(_ source: String) -> MathNode? {
         Self.parseInvocationCount += 1
-        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return .sequence([]) }
-        if trimmed == "\\frac{}{}" {
-            return .template(TemplateNode(kind: .fraction, fields: [
-                .init(id: .numerator, node: .sequence([.placeholder])),
-                .init(id: .denominator, node: .sequence([.placeholder]))
-            ]))
+        let normalized = MathInputCharacterNormalizer.normalize(source)
+        var parser = Parser(input: normalized, latexMode: false)
+        return parser.parse()
+    }
+}
+
+private extension SimpleMathParser {
+    struct Parser {
+        let characters: [Character]
+        let latexMode: Bool
+        var index: Int = 0
+
+        init(input: String, latexMode: Bool) {
+            self.characters = Array(input.trimmingCharacters(in: .whitespacesAndNewlines))
+            self.latexMode = latexMode
         }
 
-        let chars = Array(trimmed)
-        var nodes: [MathNode] = []
-        var index = 0
+        mutating func parse() -> MathNode? {
+            if characters.isEmpty { return .sequence([]) }
+            guard let nodes = parseSequence(until: nil) else { return nil }
+            skipWhitespace()
+            guard index == characters.count else { return nil }
+            return .sequence(nodes)
+        }
 
-        while index < chars.count {
-            let current = chars[index]
-            if current == "^" {
-                if let base = nodes.popLast() {
-                    let exponentNode: MathNode
-                    if index + 1 < chars.count {
-                        exponentNode = .sequence([.character(String(chars[index + 1]))])
-                        index += 1
-                    } else {
-                        exponentNode = .sequence([.placeholder])
-                    }
-                    let superscript = MathNode.template(TemplateNode(kind: .superscript, fields: [
-                        .init(id: .base, node: .sequence([base])),
-                        .init(id: .exponent, node: exponentNode)
-                    ]))
-                    nodes.append(superscript)
-                } else {
-                    nodes.append(.character("^"))
+        private mutating func parseSequence(until terminator: Character?) -> [MathNode]? {
+            var nodes: [MathNode] = []
+
+            while index < characters.count {
+                skipWhitespace()
+                guard index < characters.count else { break }
+
+                let current = characters[index]
+                if let terminator, current == terminator {
+                    break
                 }
-            } else {
-                nodes.append(.character(String(current)))
+
+                switch current {
+                case "\\":
+                    guard parseCommand(into: &nodes) else { return nil }
+                case "^":
+                    advance()
+                    guard applyScript(.superscript, into: &nodes) else { return nil }
+                case "_":
+                    advance()
+                    guard applyScript(.subscriptTemplate, into: &nodes) else { return nil }
+                case "(":
+                    advance()
+                    guard let content = parseDelimitedSequence(closingWith: ")") else { return nil }
+                    nodes.append(template(.parentheses, [.content: content]))
+                case "|":
+                    advance()
+                    guard let content = parseDelimitedSequence(closingWith: "|") else { return nil }
+                    nodes.append(template(.absoluteValue, [.content: content]))
+                default:
+                    if isOperator(current) {
+                        nodes.append(.operatorSymbol(String(current)))
+                        advance()
+                    } else {
+                        nodes.append(.character(String(current)))
+                        advance()
+                    }
+                }
             }
+
+            return nodes
+        }
+
+        private mutating func parseCommand(into nodes: inout [MathNode]) -> Bool {
+            advance()
+            let name = readCommandName()
+
+            switch name {
+            case "frac":
+                guard let numerator = parseRequiredGroup(),
+                      let denominator = parseRequiredGroup() else { return false }
+                nodes.append(template(.fraction, [.numerator: numerator, .denominator: denominator]))
+                return true
+            case "sqrt":
+                if match("[") {
+                    guard let indexGroup = parseDelimitedSequence(closingWith: "]"),
+                          let radicand = parseRequiredGroup() else { return false }
+                    nodes.append(template(.nthRoot, [.rootIndex: indexGroup, .radicand: radicand]))
+                    return true
+                }
+                guard let radicand = parseRequiredGroup() else { return false }
+                nodes.append(template(.sqrt, [.radicand: radicand]))
+                return true
+            case "sin", "cos", "tan", "ln", "exp":
+                guard let argument = parseFunctionArgument() else { return false }
+                nodes.append(template(functionKind(for: name), [.argument: argument]))
+                return true
+            case "log":
+                let base: MathNode
+                if match("_") {
+                    guard let parsedBase = parseGroupOrAtom() else { return false }
+                    base = parsedBase
+                } else {
+                    base = .sequence([])
+                }
+                guard let argument = parseFunctionArgument() else { return false }
+                nodes.append(template(.log, [.base: base, .argument: argument]))
+                return true
+            case "left" where match("|"):
+                guard let content = parseUntilRightAbsolute() else { return false }
+                nodes.append(template(.absoluteValue, [.content: content]))
+                return true
+            case "right":
+                return false
+            case "":
+                nodes.append(.character("\\"))
+                return true
+            default:
+                return false
+            }
+        }
+
+        private mutating func applyScript(_ kind: TemplateKind, into nodes: inout [MathNode]) -> Bool {
+            guard let base = nodes.popLast() else { return false }
+            let operand = parseGroupOrAtom() ?? .sequence([.placeholder])
+
+            switch kind {
+            case .superscript:
+                nodes.append(
+                    template(
+                        .superscript,
+                        [.base: wrapped(base), .exponent: operand]
+                    )
+                )
+            case .subscriptTemplate:
+                nodes.append(
+                    template(
+                        .subscriptTemplate,
+                        [.base: wrapped(base), .subscriptField: operand]
+                    )
+                )
+            default:
+                return false
+            }
+            return true
+        }
+
+        private mutating func parseFunctionArgument() -> MathNode? {
+            skipWhitespace()
+            if match("(") {
+                return parseDelimitedSequence(closingWith: ")")
+            }
+            return parseGroupOrAtom()
+        }
+
+        private mutating func parseRequiredGroup() -> MathNode? {
+            skipWhitespace()
+            guard match("{") else { return nil }
+            return parseDelimitedSequence(closingWith: "}")
+        }
+
+        private mutating func parseGroupOrAtom() -> MathNode? {
+            skipWhitespace()
+            guard index < characters.count else { return nil }
+
+            if match("{") {
+                return parseDelimitedSequence(closingWith: "}")
+            }
+
+            if match("(") {
+                guard let content = parseDelimitedSequence(closingWith: ")") else { return nil }
+                return template(.parentheses, [.content: content])
+            }
+
+            if match("|") {
+                guard let content = parseDelimitedSequence(closingWith: "|") else { return nil }
+                return template(.absoluteValue, [.content: content])
+            }
+
+            if characters[index] == "\\" {
+                var single: [MathNode] = []
+                guard parseCommand(into: &single), single.count == 1 else { return nil }
+                return wrapped(single[0])
+            }
+
+            if isOperator(characters[index]) {
+                let op = MathNode.operatorSymbol(String(characters[index]))
+                advance()
+                return .sequence([op])
+            }
+
+            let atom = MathNode.character(String(characters[index]))
+            advance()
+            return .sequence([atom])
+        }
+
+        private mutating func parseDelimitedSequence(closingWith terminator: Character) -> MathNode? {
+            guard let nodes = parseSequence(until: terminator) else { return nil }
+            skipWhitespace()
+            guard match(terminator) else { return nil }
+            return .sequence(nodes)
+        }
+
+        private mutating func parseUntilRightAbsolute() -> MathNode? {
+            var nodes: [MathNode] = []
+
+            while index < characters.count {
+                if peekCommand("right"), peekNextCharacter(afterCommand: "right") == "|" {
+                    advance(count: 1 + "right".count + 1)
+                    return .sequence(nodes)
+                }
+
+                guard let parsed = parseSequenceElement() else { return nil }
+                nodes.append(parsed)
+            }
+
+            return nil
+        }
+
+        private mutating func parseSequenceElement() -> MathNode? {
+            skipWhitespace()
+            guard index < characters.count else { return nil }
+
+            let current = characters[index]
+            switch current {
+            case "\\":
+                var nodes: [MathNode] = []
+                guard parseCommand(into: &nodes), nodes.count == 1 else { return nil }
+                return nodes[0]
+            case "^":
+                return nil
+            case "_":
+                return nil
+            case "(":
+                advance()
+                guard let content = parseDelimitedSequence(closingWith: ")") else { return nil }
+                return template(.parentheses, [.content: content])
+            case "|":
+                advance()
+                guard let content = parseDelimitedSequence(closingWith: "|") else { return nil }
+                return template(.absoluteValue, [.content: content])
+            default:
+                if isOperator(current) {
+                    advance()
+                    return .operatorSymbol(String(current))
+                }
+                advance()
+                return .character(String(current))
+            }
+        }
+
+        private func template(_ kind: TemplateKind, _ fields: [FieldID: MathNode]) -> MathNode {
+            let orderedFields = TemplateDefinitionRegistry.definition(for: kind).fields.map { fieldID in
+                TemplateField(id: fieldID, node: fields[fieldID] ?? .sequence([.placeholder]))
+            }
+            return .template(TemplateNode(kind: kind, fields: orderedFields))
+        }
+
+        private func wrapped(_ node: MathNode) -> MathNode {
+            if case .sequence = node {
+                return node
+            }
+            return .sequence([node])
+        }
+
+        private func functionKind(for name: String) -> TemplateKind {
+            switch name {
+            case "sin": return .sin
+            case "cos": return .cos
+            case "tan": return .tan
+            case "ln": return .ln
+            case "exp": return .exp
+            default: return .sin
+            }
+        }
+
+        private func isOperator(_ character: Character) -> Bool {
+            ["+", "-", "=", "*", "/", ",", "<", ">"].contains(character)
+        }
+
+        private mutating func skipWhitespace() {
+            while index < characters.count, characters[index].isWhitespace {
+                index += 1
+            }
+        }
+
+        private mutating func match(_ character: Character) -> Bool {
+            guard index < characters.count, characters[index] == character else { return false }
+            index += 1
+            return true
+        }
+
+        private mutating func advance() {
             index += 1
         }
 
-        return .sequence(nodes)
+        private mutating func advance(count: Int) {
+            index += count
+        }
+
+        private mutating func readCommandName() -> String {
+            let start = index
+            while index < characters.count, characters[index].isLetter {
+                index += 1
+            }
+            return String(characters[start..<index])
+        }
+
+        private func peekCommand(_ command: String) -> Bool {
+            guard index < characters.count, characters[index] == "\\" else { return false }
+            let chars = Array(command)
+            guard index + chars.count < characters.count else { return false }
+            for (offset, char) in chars.enumerated() {
+                if characters[index + 1 + offset] != char {
+                    return false
+                }
+            }
+            return true
+        }
+
+        private func peekNextCharacter(afterCommand command: String) -> Character? {
+            let nextIndex = index + 1 + command.count
+            guard nextIndex < characters.count else { return nil }
+            return characters[nextIndex]
+        }
     }
 }
