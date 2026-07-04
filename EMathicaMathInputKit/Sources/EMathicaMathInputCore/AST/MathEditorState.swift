@@ -32,7 +32,7 @@ public enum EditorPathComponent: Hashable, Codable {
     case templateField(FieldID)
 }
 
-public enum KeyboardAction: Hashable {
+public enum KeyboardAction: Hashable, Sendable {
     case insertCharacter(String)
     case insertSymbol(String)
     case insertOperator(String)

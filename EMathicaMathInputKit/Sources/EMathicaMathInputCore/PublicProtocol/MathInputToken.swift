@@ -5,7 +5,7 @@ import Foundation
 /// These tokens are an additive facade over the existing editor action pipeline.
 /// They do not replace the editor layer and are translated into existing editor
 /// actions or session-level control flows such as undo/redo.
-public enum MathInputToken: Hashable {
+public enum MathInputToken: Hashable, Sendable {
     case char(String)
     case number(String)
     case op(String)
@@ -14,7 +14,7 @@ public enum MathInputToken: Hashable {
     case control(MathInputControlToken)
 }
 
-public enum MathInputTemplateToken: String, Hashable {
+public enum MathInputTemplateToken: String, Hashable, Sendable {
     case fraction
     case sqrt
     case superscript
@@ -23,7 +23,7 @@ public enum MathInputTemplateToken: String, Hashable {
     case absoluteValue
 }
 
-public enum MathInputControlToken: String, Hashable {
+public enum MathInputControlToken: String, Hashable, Sendable {
     case moveLeft
     case moveRight
     case moveUp

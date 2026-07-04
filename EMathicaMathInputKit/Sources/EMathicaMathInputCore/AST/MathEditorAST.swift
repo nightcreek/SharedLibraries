@@ -29,7 +29,7 @@ public struct TemplateField: Hashable, Codable {
     public var node: MathNode
 }
 
-public enum TemplateKind: Hashable, Codable {
+public enum TemplateKind: Hashable, Codable, Sendable {
     case fraction
     case sqrt
     case nthRoot

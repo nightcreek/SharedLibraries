@@ -8,6 +8,22 @@ public struct KeyboardKey: Identifiable, Hashable, Equatable {
     public var isTemplate: Bool
     public var isAccent: Bool
 
+    public init(
+        id: String,
+        title: String,
+        subtitle: String?,
+        action: KeyboardAction,
+        isTemplate: Bool,
+        isAccent: Bool
+    ) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.action = action
+        self.isTemplate = isTemplate
+        self.isAccent = isAccent
+    }
+
     public static func text(_ value: String) -> KeyboardKey {
         KeyboardKey(
             id: "text:\(value)",
@@ -77,5 +93,15 @@ public struct KeyboardKey: Identifiable, Hashable, Equatable {
             isTemplate: false,
             isAccent: accent
         )
+    }
+
+    init(coreKey: EMathicaMathInputCore.MathKeyboardKey) {
+        let labelParts = WorkspaceMathKeyboardAdapter.legacyLabel(for: coreKey)
+        self.id = coreKey.id
+        self.title = labelParts.title
+        self.subtitle = labelParts.subtitle
+        self.action = coreKey.intent.keyboardAction ?? .submit
+        self.isTemplate = WorkspaceMathKeyboardAdapter.isTemplate(coreKey)
+        self.isAccent = WorkspaceMathKeyboardAdapter.isAccent(coreKey)
     }
 }

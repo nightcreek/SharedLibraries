@@ -17,4 +17,14 @@ final class MathKeyboardLayoutTests: XCTestCase {
         XCTAssertTrue(MathKeyboardTab.alphabet.rows.joined().contains(where: { $0.action == .moveLeft }))
         XCTAssertTrue(MathKeyboardTab.symbols.rows.joined().contains(where: { $0.action == .moveRight || $0.action == .submit || $0.action == .deleteBackward }))
     }
+
+    func testWorkspaceAdapterConvertsCoreStandardLayout() {
+        let rows = WorkspaceMathKeyboardAdapter.rows(for: "numbers")
+        let keys = rows.joined()
+
+        XCTAssertFalse(rows.isEmpty)
+        XCTAssertTrue(keys.contains(where: { $0.title == "7" }))
+        XCTAssertTrue(keys.contains(where: { $0.title == "√□" }))
+        XCTAssertTrue(keys.contains(where: { $0.action == .deleteBackward }))
+    }
 }

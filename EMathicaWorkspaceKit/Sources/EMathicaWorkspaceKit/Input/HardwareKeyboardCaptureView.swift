@@ -80,69 +80,24 @@ public enum KeyboardHardwareMapper {
         charactersIgnoringModifiers: String,
         modifierFlags: UIKeyModifierFlags
     ) -> KeyboardAction? {
-        if modifierFlags.contains(.command) {
-            // Let higher-level shortcut handlers or local editor undo/redo handle command combos.
-            // We must not degrade Cmd+Z / Cmd+Shift+Z / Cmd+Y into plain character input.
-            return nil
-        }
-        if keyCode == .keyboard6, modifierFlags.contains(.shift) {
-            return .insertTemplate(.superscript)
-        }
-        if keyCode == .keyboardReturnOrEnter {
-            return .submit
-        }
-        if keyCode == .keyboardDeleteOrBackspace {
-            return .deleteBackward
-        }
-        if keyCode == .keyboardDeleteForward {
-            return .deleteForward
-        }
-        if keyCode == .keyboardTab {
-            if modifierFlags.contains(.shift) {
-                return .shiftTab
-            }
-            return .tab
-        }
-        if keyCode == .keyboardLeftArrow {
-            return .moveLeft
-        }
-        if keyCode == .keyboardRightArrow {
-            return .moveRight
-        }
-        if keyCode == .keyboardUpArrow {
-            return .moveUp
-        }
-        if keyCode == .keyboardDownArrow {
-            return .moveDown
-        }
-        if keyCode == .keyboardEscape {
-            return .cancel
-        }
-
-        // Printable characters must respect modifier result first.
-        let raw = characters
-        let fallback = charactersIgnoringModifiers
-        let value = raw.isEmpty ? fallback : raw
-        if value == "^" {
-            return .insertTemplate(.superscript)
-        }
-        if value.isEmpty {
-            return nil
-        }
-
-        if let action = mapOperator(value) {
-            return action
-        }
-        return .insertCharacter(value)
+        let descriptor = HardwareKeyboardDescriptor(
+            keyCode: Int(keyCode.rawValue),
+            characters: characters,
+            charactersIgnoringModifiers: charactersIgnoringModifiers,
+            modifiers: modifiers(from: modifierFlags)
+        )
+        return HardwareKeyboardSemanticMapper().intent(for: descriptor)?.keyboardAction
     }
 
-    private static func mapOperator(_ value: String) -> KeyboardAction? {
-        switch value {
-        case "+", "-", "=", "*", "/", "<", ">", ",":
-            return .insertOperator(value)
-        default:
-            return nil
+    private static func modifiers(from flags: UIKeyModifierFlags) -> HardwareKeyboardModifiers {
+        var modifiers: HardwareKeyboardModifiers = []
+        if flags.contains(.shift) {
+            modifiers.insert(.shift)
         }
+        if flags.contains(.command) {
+            modifiers.insert(.command)
+        }
+        return modifiers
     }
 
 #if DEBUG
