@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import EMathicaWorkspaceKit
 
 final class MathKeyboardLayoutTests: XCTestCase {
@@ -26,5 +27,11 @@ final class MathKeyboardLayoutTests: XCTestCase {
         XCTAssertTrue(keys.contains(where: { $0.title == "7" }))
         XCTAssertTrue(keys.contains(where: { $0.title == "√□" }))
         XCTAssertTrue(keys.contains(where: { $0.action == .deleteBackward }))
+    }
+
+    @MainActor
+    func testMathKeyboardViewDefaultInitializerRemainsAvailable() {
+        let view = MathKeyboardView { _ in }
+        XCTAssertNotNil(view)
     }
 }

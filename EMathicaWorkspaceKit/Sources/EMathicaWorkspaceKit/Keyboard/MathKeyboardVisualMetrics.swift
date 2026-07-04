@@ -1,34 +1,117 @@
 import CoreGraphics
+import EMathicaThemeKit
+import SwiftUI
 
 public enum MathKeyboardVisualMetrics {
-    public static let backplateCornerRadius: CGFloat = 20
-    public static let backplatePaddingTop: CGFloat = 12
-    public static let backplatePaddingHorizontal: CGFloat = 9
-    public static let backplatePaddingBottom: CGFloat = 10
-    public static let backplateVisualBleedVertical: CGFloat = 5
-    public static let backplateVisualBleedHorizontal: CGFloat = 3
-    public static let keysBackplateDarkOpacity: Double = 0.32
-    public static let keysBackplateLightOpacity: Double = 0.22
-    public static let keysBackplateMaterialDarkOpacity: Double = 0.46
-    public static let keysBackplateMaterialLightOpacity: Double = 0.54
-    public static let keysBackplateStrokeDarkOpacity: Double = 0.24
-    public static let keysBackplateStrokeLightOpacity: Double = 0.18
-    public static let keysBackplateTopHighlightDarkOpacity: Double = 0.11
-    public static let keysBackplateTopHighlightLightOpacity: Double = 0.14
-    public static let keysBackplateBottomShadeDarkOpacity: Double = 0.08
-    public static let keysBackplateBottomShadeLightOpacity: Double = 0.03
-    public static let backplateTopHighlightHeight: CGFloat = 1
-    public static let backplateBottomShadeHeight: CGFloat = 3
-    public static let keysBackplateShadowDarkOpacity: Double = 0.14
-    public static let keysBackplateShadowLightOpacity: Double = 0.06
-    public static let keyDarkOpacity: Double = 0.05
-    public static let keyLightOpacity: Double = 0.22
-    public static let categoryKeyDarkOpacity: Double = 0.04
-    public static let categoryKeyLightOpacity: Double = 0.20
-    public static let categoryActiveDarkOpacity: Double = 0.24
-    public static let categoryActiveLightOpacity: Double = 0.24
-    public static let accentKeyDarkOpacity: Double = 0.26
-    public static let accentKeyLightOpacity: Double = 0.24
-    public static let keyBorderDarkOpacity: Double = 0.16
-    public static let keyBorderLightOpacity: Double = 0.24
+    static func backplateCornerRadius(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.panel.cornerRadius)
+    }
+
+    static func shellPadding(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.shellPadding)
+    }
+
+    static func backplatePaddingTop(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.backplatePaddingTop)
+    }
+
+    static func backplatePaddingHorizontal(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.backplatePaddingHorizontal)
+    }
+
+    static func backplatePaddingBottom(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.backplatePaddingBottom)
+    }
+
+    static func backplateVisualBleedVertical(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.backplateVisualBleedVertical)
+    }
+
+    static func backplateVisualBleedHorizontal(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.backplateVisualBleedHorizontal)
+    }
+
+    static func tabSpacing(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.tabSpacing)
+    }
+
+    static func rowSpacing(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.rowSpacing)
+    }
+
+    static func keySpacing(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.keySpacing)
+    }
+
+    static func keyMinHeight(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.keyMinHeight)
+    }
+
+    static func tabHeight(for style: MathKeyboardStyle) -> CGFloat {
+        CGFloat(style.spacing.tabHeight)
+    }
+
+    static let backplateTopHighlightHeight: CGFloat = 1
+    static let backplateBottomShadeHeight: CGFloat = 3
+    static let shellTopGlowHeight: CGFloat = 8
+    static let backplateShadowRadiusDark: CGFloat = 18
+    static let backplateShadowRadiusLight: CGFloat = 14
+    static let backplateShadowYOffsetDark: CGFloat = 5
+    static let backplateShadowYOffsetLight: CGFloat = 4
+    static let shellShadowRadiusDark: CGFloat = 8
+    static let shellShadowRadiusLight: CGFloat = 7
+    static let shellShadowYOffsetDark: CGFloat = 2
+    static let shellShadowYOffsetLight: CGFloat = 1
+    static let keyShadowRadius: CGFloat = 4
+    static let keyShadowYOffset: CGFloat = 1
+    static let strokeLineWidth: CGFloat = 0.7
+    static let backplateStrokeLineWidth: CGFloat = 0.8
+
+    static func keyRole(for role: MathKeyboardSurfaceRole, style: MathKeyboardStyle, colorScheme: ColorScheme) -> MathKeyboardResolvedKeyRole {
+        let dark = colorScheme == .dark
+        switch role {
+        case .normal:
+            return .init(
+                fillOpacity: dark ? style.key.normalBackgroundDarkOpacity : style.key.normalBackgroundLightOpacity,
+                materialOpacity: dark ? style.key.normalMaterialDarkOpacity : style.key.normalMaterialLightOpacity,
+                strokeOpacity: dark ? style.key.normalStrokeDarkOpacity : style.key.normalStrokeLightOpacity,
+                highlightOpacity: dark ? style.key.normalHighlightDarkOpacity : style.key.normalHighlightLightOpacity
+            )
+        case .category:
+            return .init(
+                fillOpacity: dark ? style.key.categoryBackgroundDarkOpacity : style.key.categoryBackgroundLightOpacity,
+                materialOpacity: dark ? style.key.categoryMaterialDarkOpacity : style.key.categoryMaterialLightOpacity,
+                strokeOpacity: dark ? style.key.categoryStrokeDarkOpacity : style.key.categoryStrokeLightOpacity,
+                highlightOpacity: dark ? style.key.categoryHighlightDarkOpacity : style.key.categoryHighlightLightOpacity
+            )
+        case .categoryActive:
+            return .init(
+                fillOpacity: dark ? style.key.categoryActiveBackgroundDarkOpacity : style.key.categoryActiveBackgroundLightOpacity,
+                materialOpacity: dark ? style.key.categoryActiveMaterialDarkOpacity : style.key.categoryActiveMaterialLightOpacity,
+                strokeOpacity: dark ? style.key.categoryActiveStrokeDarkOpacity : style.key.categoryActiveStrokeLightOpacity,
+                highlightOpacity: dark ? style.key.categoryActiveHighlightDarkOpacity : style.key.categoryActiveHighlightLightOpacity
+            )
+        case .primary:
+            return .init(
+                fillOpacity: dark ? style.key.accentBackgroundDarkOpacity : style.key.accentBackgroundLightOpacity,
+                materialOpacity: dark ? style.key.accentMaterialDarkOpacity : style.key.accentMaterialLightOpacity,
+                strokeOpacity: dark ? style.key.accentStrokeDarkOpacity : style.key.accentStrokeLightOpacity,
+                highlightOpacity: dark ? style.key.accentHighlightDarkOpacity : style.key.accentHighlightLightOpacity
+            )
+        }
+    }
+}
+
+struct MathKeyboardResolvedKeyRole {
+    let fillOpacity: Double
+    let materialOpacity: Double
+    let strokeOpacity: Double
+    let highlightOpacity: Double
+}
+
+enum MathKeyboardSurfaceRole {
+    case normal
+    case category
+    case categoryActive
+    case primary
 }

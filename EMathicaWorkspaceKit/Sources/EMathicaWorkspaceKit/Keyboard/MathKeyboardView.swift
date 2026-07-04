@@ -1,24 +1,38 @@
+import EMathicaMathCore
 import EMathicaMathInputCore
 import EMathicaThemeKit
-import EMathicaMathCore
 import SwiftUI
 
 public struct MathKeyboardView: View {
     @Environment(\.colorScheme) private var colorScheme
+
     public var onKey: (KeyboardAction) -> Void
+    public var style: MathKeyboardStyle
 
     @State private var selectedTab: MathKeyboardTab = .numbers
 
-    public var body: some View {
-        KeyboardGlassPanel {
-            VStack(spacing: 8) {
-                MathKeyboardTabBar(selection: $selectedTab)
+    public init(
+        onKey: @escaping (KeyboardAction) -> Void,
+        style: MathKeyboardStyle = .default
+    ) {
+        self.onKey = onKey
+        self.style = style
+    }
 
-                VStack(spacing: 7) {
+    public var body: some View {
+        KeyboardGlassPanel(style: style) {
+            VStack(spacing: MathKeyboardVisualMetrics.tabSpacing(for: style)) {
+                MathKeyboardTabBar(selection: $selectedTab, style: style)
+
+                VStack(spacing: MathKeyboardVisualMetrics.rowSpacing(for: style)) {
                     ForEach(selectedTab.rows.indices, id: \.self) { rowIndex in
-                        HStack(spacing: 7) {
+                        HStack(spacing: MathKeyboardVisualMetrics.keySpacing(for: style)) {
                             ForEach(selectedTab.rows[rowIndex]) { key in
-                                MathKeyboardKey(key: key, colorScheme: colorScheme) {
+                                MathKeyboardKey(
+                                    key: key,
+                                    colorScheme: colorScheme,
+                                    style: style
+                                ) {
                                     onKey(key.action)
                                 }
                                 .id("\(selectedTab.id)-\(key.id)")
@@ -32,13 +46,13 @@ public struct MathKeyboardView: View {
                     tx.animation = nil
                 }
             }
-            .padding(.top, MathKeyboardVisualMetrics.backplatePaddingTop)
-            .padding(.horizontal, MathKeyboardVisualMetrics.backplatePaddingHorizontal)
-            .padding(.bottom, MathKeyboardVisualMetrics.backplatePaddingBottom)
+            .padding(.top, MathKeyboardVisualMetrics.backplatePaddingTop(for: style))
+            .padding(.horizontal, MathKeyboardVisualMetrics.backplatePaddingHorizontal(for: style))
+            .padding(.bottom, MathKeyboardVisualMetrics.backplatePaddingBottom(for: style))
             .background {
-                KeyboardKeysBackplate(colorScheme: colorScheme)
-                    .padding(.vertical, -MathKeyboardVisualMetrics.backplateVisualBleedVertical)
-                    .padding(.horizontal, -MathKeyboardVisualMetrics.backplateVisualBleedHorizontal)
+                KeyboardKeysBackplate(colorScheme: colorScheme, style: style)
+                    .padding(.vertical, -MathKeyboardVisualMetrics.backplateVisualBleedVertical(for: style))
+                    .padding(.horizontal, -MathKeyboardVisualMetrics.backplateVisualBleedHorizontal(for: style))
             }
         }
         .transaction { tx in
@@ -48,11 +62,12 @@ public struct MathKeyboardView: View {
 }
 
 private struct KeyboardKeysBackplate: View {
-    public let colorScheme: ColorScheme
+    let colorScheme: ColorScheme
+    let style: MathKeyboardStyle
 
-    public var body: some View {
+    var body: some View {
         let shape = RoundedRectangle(
-            cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius,
+            cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius(for: style),
             style: .continuous
         )
 
@@ -62,11 +77,7 @@ private struct KeyboardKeysBackplate: View {
 
             shape
                 .fill(.thinMaterial)
-                .opacity(
-                    colorScheme == .dark
-                        ? MathKeyboardVisualMetrics.keysBackplateMaterialDarkOpacity
-                        : MathKeyboardVisualMetrics.keysBackplateMaterialLightOpacity
-                )
+                .opacity(colorScheme == .dark ? style.panel.backplateMaterialDarkOpacity : style.panel.backplateMaterialLightOpacity)
 
             shape
                 .fill(
@@ -86,11 +97,9 @@ private struct KeyboardKeysBackplate: View {
             shape
                 .strokeBorder(
                     Color.white.opacity(
-                        colorScheme == .dark
-                            ? MathKeyboardVisualMetrics.keysBackplateStrokeDarkOpacity
-                            : MathKeyboardVisualMetrics.keysBackplateStrokeLightOpacity
+                        colorScheme == .dark ? style.panel.backplateStrokeDarkOpacity : style.panel.backplateStrokeLightOpacity
                     ),
-                    lineWidth: 0.8
+                    lineWidth: MathKeyboardVisualMetrics.backplateStrokeLineWidth
                 )
         }
         .overlay(alignment: .top) {
@@ -99,9 +108,7 @@ private struct KeyboardKeysBackplate: View {
                     LinearGradient(
                         colors: [
                             Color.white.opacity(
-                                colorScheme == .dark
-                                    ? MathKeyboardVisualMetrics.keysBackplateTopHighlightDarkOpacity
-                                    : MathKeyboardVisualMetrics.keysBackplateTopHighlightLightOpacity
+                                colorScheme == .dark ? style.panel.backplateTopHighlightDarkOpacity : style.panel.backplateTopHighlightLightOpacity
                             ),
                             Color.clear
                         ],
@@ -120,9 +127,7 @@ private struct KeyboardKeysBackplate: View {
                         colors: [
                             Color.clear,
                             Color.black.opacity(
-                                colorScheme == .dark
-                                    ? MathKeyboardVisualMetrics.keysBackplateBottomShadeDarkOpacity
-                                    : MathKeyboardVisualMetrics.keysBackplateBottomShadeLightOpacity
+                                colorScheme == .dark ? style.panel.backplateBottomShadeDarkOpacity : style.panel.backplateBottomShadeLightOpacity
                             )
                         ],
                         startPoint: .top,
@@ -133,37 +138,38 @@ private struct KeyboardKeysBackplate: View {
                 .clipShape(shape)
                 .allowsHitTesting(false)
         }
-            .shadow(
-                color: Color.black.opacity(
-                    colorScheme == .dark
-                        ? MathKeyboardVisualMetrics.keysBackplateShadowDarkOpacity
-                        : MathKeyboardVisualMetrics.keysBackplateShadowLightOpacity
-                ),
-                radius: colorScheme == .dark ? 18 : 14,
-                x: 0,
-                y: colorScheme == .dark ? 5 : 4
-            )
-            .allowsHitTesting(false)
+        .shadow(
+            color: Color.black.opacity(
+                colorScheme == .dark ? style.panel.backplateShadowDarkOpacity : style.panel.backplateShadowLightOpacity
+            ),
+            radius: colorScheme == .dark ? MathKeyboardVisualMetrics.backplateShadowRadiusDark : MathKeyboardVisualMetrics.backplateShadowRadiusLight,
+            x: 0,
+            y: colorScheme == .dark ? MathKeyboardVisualMetrics.backplateShadowYOffsetDark : MathKeyboardVisualMetrics.backplateShadowYOffsetLight
+        )
+        .allowsHitTesting(false)
     }
 
     private var backplateFill: Color {
         colorScheme == .dark
-            ? Color.black.opacity(MathKeyboardVisualMetrics.keysBackplateDarkOpacity)
-            : Color.white.opacity(MathKeyboardVisualMetrics.keysBackplateLightOpacity)
+            ? Color.black.opacity(style.panel.backplateBackgroundDarkOpacity)
+            : Color.white.opacity(style.panel.backplateBackgroundLightOpacity)
     }
 }
 
 private struct MathKeyboardTabBar: View {
     @Environment(\.colorScheme) private var colorScheme
-    @Binding var selection: MathKeyboardTab
 
-    public var body: some View {
-        HStack(spacing: 6) {
+    @Binding var selection: MathKeyboardTab
+    let style: MathKeyboardStyle
+
+    var body: some View {
+        HStack(spacing: MathKeyboardVisualMetrics.tabSpacing(for: style)) {
             ForEach(MathKeyboardTab.allCases) { tab in
                 KeyboardTabButton(
                     title: tab.title,
                     isSelected: selection == tab,
-                    colorScheme: colorScheme
+                    colorScheme: colorScheme,
+                    style: style
                 ) {
                     var noAnimation = Transaction()
                     noAnimation.animation = nil
@@ -181,21 +187,23 @@ private struct MathKeyboardTabBar: View {
 }
 
 internal struct MathKeyboardKey: View, @preconcurrency Equatable {
-    public let key: KeyboardKey
-    public let colorScheme: ColorScheme
-    public let action: () -> Void
+    let key: KeyboardKey
+    let colorScheme: ColorScheme
+    let style: MathKeyboardStyle
+    let action: () -> Void
 
     public static func == (lhs: MathKeyboardKey, rhs: MathKeyboardKey) -> Bool {
         lhs.key == rhs.key
     }
 
-    public var body: some View {
+    var body: some View {
         GlassKeyButton(
             title: key.title,
             subtitle: key.subtitle,
-                isAccent: key.isAccent,
-                isTemplate: key.isTemplate,
-                colorScheme: colorScheme
+            isAccent: key.isAccent,
+            isTemplate: key.isTemplate,
+            colorScheme: colorScheme,
+            style: style
         ) {
             action()
         }
@@ -207,79 +215,94 @@ internal struct MathKeyboardKey: View, @preconcurrency Equatable {
 
 private struct KeyboardGlassPanel<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
+
+    let style: MathKeyboardStyle
     @ViewBuilder var content: Content
 
-    public var body: some View {
+    var body: some View {
         content
-            .padding(8)
+            .padding(MathKeyboardVisualMetrics.shellPadding(for: style))
             .background {
-                RoundedRectangle(cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius, style: .continuous)
+                let shape = RoundedRectangle(
+                    cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius(for: style),
+                    style: .continuous
+                )
+
+                shape
                     .fill(
                         colorScheme == .dark
-                            ? Color.black.opacity(0.008)
-                            : Color.white.opacity(0.018)
+                            ? Color.black.opacity(style.panel.shellBackgroundDarkOpacity)
+                            : Color.white.opacity(style.panel.shellBackgroundLightOpacity)
                     )
                     .overlay {
-                        RoundedRectangle(cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius, style: .continuous)
+                        shape
                             .fill(.ultraThinMaterial)
-                            .opacity(colorScheme == .dark ? 0.22 : 0.28)
+                            .opacity(colorScheme == .dark ? style.panel.shellMaterialDarkOpacity : style.panel.shellMaterialLightOpacity)
                     }
                     .overlay {
-                        RoundedRectangle(cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius, style: .continuous)
+                        shape
                             .stroke(
-                                Color.white.opacity(colorScheme == .dark ? 0.06 : 0.10),
-                                lineWidth: 0.7
+                                Color.white.opacity(
+                                    colorScheme == .dark ? style.panel.shellStrokeDarkOpacity : style.panel.shellStrokeLightOpacity
+                                ),
+                                lineWidth: MathKeyboardVisualMetrics.strokeLineWidth
                             )
                     }
                     .overlay(alignment: .top) {
-                        RoundedRectangle(cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius, style: .continuous)
+                        shape
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(colorScheme == .dark ? 0.05 : 0.09),
+                                        Color.white.opacity(
+                                            colorScheme == .dark ? style.panel.shellTopGlowDarkOpacity : style.panel.shellTopGlowLightOpacity
+                                        ),
                                         Color.clear
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
                                 )
                             )
-                            .frame(height: 8)
-                            .clipShape(RoundedRectangle(cornerRadius: MathKeyboardVisualMetrics.backplateCornerRadius, style: .continuous))
+                            .frame(height: MathKeyboardVisualMetrics.shellTopGlowHeight)
+                            .clipShape(shape)
                     }
                     .shadow(
-                        color: Color.black.opacity(colorScheme == .dark ? 0.025 : 0.02),
-                        radius: colorScheme == .dark ? 8 : 7,
+                        color: Color.black.opacity(
+                            colorScheme == .dark ? style.panel.shellShadowDarkOpacity : style.panel.shellShadowLightOpacity
+                        ),
+                        radius: colorScheme == .dark ? MathKeyboardVisualMetrics.shellShadowRadiusDark : MathKeyboardVisualMetrics.shellShadowRadiusLight,
                         x: 0,
-                        y: colorScheme == .dark ? 2 : 1
+                        y: colorScheme == .dark ? MathKeyboardVisualMetrics.shellShadowYOffsetDark : MathKeyboardVisualMetrics.shellShadowYOffsetLight
                     )
             }
     }
 }
 
 private struct KeyboardTabButton: View {
-    public let title: String
-    public let isSelected: Bool
-    public let colorScheme: ColorScheme
-    public let action: () -> Void
+    let title: String
+    let isSelected: Bool
+    let colorScheme: ColorScheme
+    let style: MathKeyboardStyle
+    let action: () -> Void
 
-    public var body: some View {
+    var body: some View {
         Button(action: action) {
             ZStack {
                 LiquidGlassKeyBackground(
                     role: isSelected ? .categoryActive : .category,
                     isPressed: false,
                     colorScheme: colorScheme,
-                    cornerRadius: 12
+                    style: style,
+                    cornerRadius: CGFloat(style.tab.cornerRadius)
                 )
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: style.typography.tabFontSize, weight: .semibold))
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 36)
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(height: MathKeyboardVisualMetrics.tabHeight(for: style))
+            .contentShape(RoundedRectangle(cornerRadius: CGFloat(style.tab.cornerRadius), style: .continuous))
         }
         .buttonStyle(.plain)
         .transaction { tx in
@@ -289,38 +312,47 @@ private struct KeyboardTabButton: View {
 
     private var labelColor: Color {
         if colorScheme == .dark {
-            return Color.white.opacity(0.92)
+            return Color.white.opacity(isSelected ? style.tab.selectedLabelDarkOpacity : style.tab.unselectedLabelDarkOpacity)
         }
-        return Color.black.opacity(0.82)
+        return Color.black.opacity(isSelected ? style.tab.selectedLabelLightOpacity : style.tab.unselectedLabelLightOpacity)
     }
 }
 
 private struct GlassKeyButton: View {
-    public let title: String
-    public let subtitle: String?
-    public let isAccent: Bool
-    public let isTemplate: Bool
-    public let colorScheme: ColorScheme
-    public let action: () -> Void
+    let title: String
+    let subtitle: String?
+    let isAccent: Bool
+    let isTemplate: Bool
+    let colorScheme: ColorScheme
+    let style: MathKeyboardStyle
+    let action: () -> Void
 
-    public var body: some View {
+    var body: some View {
         Button(action: action) {
             ZStack {
                 LiquidGlassKeyBackground(
                     role: isAccent ? .primary : .normal,
                     isPressed: false,
-                    colorScheme: colorScheme
+                    colorScheme: colorScheme,
+                    style: style,
+                    cornerRadius: CGFloat(style.key.cornerRadius)
                 )
 
                 VStack(spacing: 1) {
                     Text(title)
-                        .font(.system(size: isTemplate ? 13 : 15, weight: .semibold, design: .rounded))
+                        .font(
+                            .system(
+                                size: isTemplate ? style.typography.templatePrimaryFontSize : style.typography.primaryFontSize,
+                                weight: .semibold,
+                                design: .rounded
+                            )
+                        )
                         .foregroundStyle(labelColor)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     if let subtitle {
                         Text(subtitle)
-                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                            .font(.system(size: style.typography.secondaryFontSize, weight: .medium, design: .rounded))
                             .foregroundStyle(subtitleColor)
                             .lineLimit(1)
                     }
@@ -328,8 +360,8 @@ private struct GlassKeyButton: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(height: MathKeyboardVisualMetrics.keyMinHeight(for: style))
+            .contentShape(RoundedRectangle(cornerRadius: CGFloat(style.key.cornerRadius), style: .continuous))
         }
         .buttonStyle(.plain)
         .transaction { tx in
@@ -353,32 +385,33 @@ private struct GlassKeyButton: View {
 }
 
 private struct LiquidGlassKeyBackground: View {
-    public enum Role {
+    enum Role {
         case normal
         case category
         case categoryActive
         case primary
     }
 
-    public let role: Role
-    public let isPressed: Bool
-    public let colorScheme: ColorScheme
-    public var cornerRadius: CGFloat = 10
+    let role: Role
+    let isPressed: Bool
+    let colorScheme: ColorScheme
+    let style: MathKeyboardStyle
+    var cornerRadius: CGFloat = 10
 
-    public var body: some View {
+    var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(baseFill)
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .opacity(materialOpacity)
+                    .opacity(resolvedRole.materialOpacity)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(topHighlightOpacity),
+                                Color.white.opacity(resolvedRole.highlightOpacity),
                                 Color.clear
                             ],
                             startPoint: .topLeading,
@@ -388,63 +421,46 @@ private struct LiquidGlassKeyBackground: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(strokeColor, lineWidth: 0.7)
+                    .strokeBorder(strokeColor, lineWidth: MathKeyboardVisualMetrics.strokeLineWidth)
             }
-            .shadow(color: Color.black.opacity(shadowOpacity), radius: 4, x: 0, y: 1)
+            .shadow(
+                color: Color.black.opacity(
+                    colorScheme == .dark ? style.key.shadowDarkOpacity : style.key.shadowLightOpacity
+                ),
+                radius: MathKeyboardVisualMetrics.keyShadowRadius,
+                x: 0,
+                y: MathKeyboardVisualMetrics.keyShadowYOffset
+            )
             .scaleEffect(isPressed ? 0.985 : 1.0)
     }
 
     private var baseFill: Color {
-        switch role {
-        case .normal:
-            return Color.white.opacity(colorScheme == .dark ? MathKeyboardVisualMetrics.keyDarkOpacity : MathKeyboardVisualMetrics.keyLightOpacity)
-        case .category:
-            return Color.white.opacity(colorScheme == .dark ? MathKeyboardVisualMetrics.categoryKeyDarkOpacity : MathKeyboardVisualMetrics.categoryKeyLightOpacity)
-        case .categoryActive:
-            return Color.accentColor.opacity(colorScheme == .dark ? MathKeyboardVisualMetrics.categoryActiveDarkOpacity : MathKeyboardVisualMetrics.categoryActiveLightOpacity)
-        case .primary:
-            return Color.accentColor.opacity(colorScheme == .dark ? MathKeyboardVisualMetrics.accentKeyDarkOpacity : MathKeyboardVisualMetrics.accentKeyLightOpacity)
+        switch visualRole {
+        case .normal, .category:
+            return Color.white.opacity(resolvedRole.fillOpacity)
+        case .categoryActive, .primary:
+            return Color.accentColor.opacity(resolvedRole.fillOpacity)
         }
     }
 
     private var strokeColor: Color {
-        let opacity: Double
+        Color.white.opacity(resolvedRole.strokeOpacity)
+    }
+
+    private var visualRole: MathKeyboardSurfaceRole {
         switch role {
         case .normal:
-            opacity = colorScheme == .dark ? MathKeyboardVisualMetrics.keyBorderDarkOpacity : MathKeyboardVisualMetrics.keyBorderLightOpacity
+            return .normal
         case .category:
-            opacity = colorScheme == .dark ? 0.13 : 0.26
+            return .category
         case .categoryActive:
-            opacity = colorScheme == .dark ? 0.18 : 0.34
+            return .categoryActive
         case .primary:
-            opacity = colorScheme == .dark ? 0.19 : 0.36
-        }
-        return Color.white.opacity(opacity)
-    }
-
-    private var materialOpacity: Double {
-        switch role {
-        case .normal:
-            return colorScheme == .dark ? 0.12 : 0.18
-        case .category:
-            return colorScheme == .dark ? 0.10 : 0.16
-        case .categoryActive:
-            return colorScheme == .dark ? 0.12 : 0.16
-        case .primary:
-            return colorScheme == .dark ? 0.14 : 0.18
+            return .primary
         }
     }
 
-    private var topHighlightOpacity: Double {
-        switch role {
-        case .normal: return colorScheme == .dark ? 0.12 : 0.10
-        case .category: return colorScheme == .dark ? 0.10 : 0.09
-        case .categoryActive: return colorScheme == .dark ? 0.14 : 0.12
-        case .primary: return colorScheme == .dark ? 0.14 : 0.12
-        }
-    }
-
-    private var shadowOpacity: Double {
-        colorScheme == .dark ? 0.08 : 0.06
+    private var resolvedRole: MathKeyboardResolvedKeyRole {
+        MathKeyboardVisualMetrics.keyRole(for: visualRole, style: style, colorScheme: colorScheme)
     }
 }
