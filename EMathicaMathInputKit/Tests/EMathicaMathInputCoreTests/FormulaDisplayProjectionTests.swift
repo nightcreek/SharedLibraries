@@ -105,4 +105,41 @@ final class FormulaDisplayProjectionTests: XCTestCase {
 
         MathInputArchitectureInvariants.validateProjectionSnapshot(formula)
     }
+
+    func testDisplayProjectionSerializesPiecewiseMarkup() {
+        let formula = MathFormula.template(
+            MathTemplateFormula(
+                kind: .piecewise2,
+                fields: [
+                    .sequence([.symbol("x")]),
+                    .sequence([.operatorSymbol("<"), .number("0")]),
+                    .sequence([.symbol("y")]),
+                    .sequence([.operatorSymbol(">"), .number("0")])
+                ]
+            )
+        )
+
+        XCTAssertEqual(
+            FormulaDisplayProjection.displayout(source: formula).rawValue,
+            #"\piecewise{x}{<0}{y}{>0}"#
+        )
+    }
+
+    func testDisplayProjectionSerializesParametricMarkup() {
+        let formula = MathFormula.template(
+            MathTemplateFormula(
+                kind: .parametric2D,
+                fields: [
+                    .sequence([.symbol("x")]),
+                    .sequence([.symbol("y")]),
+                    .sequence([.symbol("t")])
+                ]
+            )
+        )
+
+        XCTAssertEqual(
+            FormulaDisplayProjection.displayout(source: formula).rawValue,
+            #"\parametric{x}{y}{t}"#
+        )
+    }
 }

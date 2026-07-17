@@ -22,7 +22,10 @@ let package = Package(
             targets: ["EMathicaMathInputCore", "EMathicaMathInputUI"]
         )
     ],
-    dependencies: [],
+    dependencies: [
+        .package(path: "../EMathicaFormulaDisplayKit"),
+        .package(path: "../EMathicaThemeKit")
+    ],
     targets: [
         .target(
             name: "EMathicaMathInputCore",
@@ -30,11 +33,20 @@ let package = Package(
         ),
         .target(
             name: "EMathicaMathInputUI",
-            dependencies: ["EMathicaMathInputCore"]
+            dependencies: [
+                "EMathicaMathInputCore",
+                .product(name: "EMathicaFormulaDisplayCore", package: "EMathicaFormulaDisplayKit"),
+                .product(name: "EMathicaFormulaDisplaySwiftUI", package: "EMathicaFormulaDisplayKit"),
+                "EMathicaThemeKit"
+            ]
         ),
         .testTarget(
             name: "EMathicaMathInputCoreTests",
             dependencies: ["EMathicaMathInputCore"]
+        ),
+        .testTarget(
+            name: "EMathicaMathInputUITests",
+            dependencies: ["EMathicaMathInputUI"]
         )
     ]
 )

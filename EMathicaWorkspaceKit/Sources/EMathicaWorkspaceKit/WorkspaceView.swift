@@ -1,4 +1,5 @@
 import EMathicaMathInputCore
+import EMathicaMathInputUI
 import EMathicaThemeKit
 import EMathicaDocumentKit
 import EMathicaMathCore
@@ -701,8 +702,8 @@ private struct WorkspaceInlineInputDock: View {
             }
 
             if state.isInputPresented {
-                FormulaEditorView(
-                    editorState: state.formulaInputState.editorState,
+                FormulaEditingDisplayView(
+                    inputState: state.formulaInputState,
                     isFocused: state.focus == .formulaEditor,
                     onTapCursor: { cursor in
                         state.focusEditor(at: cursor)
@@ -923,7 +924,7 @@ private struct WorkspaceInlineInputDock: View {
 
     private var keyboardPanel: some View {
         VStack(spacing: 10) {
-            MathKeyboardView { action in
+            MathInputKeyboardView { action in
                 state.handleKeyboardAction(action)
             }
         }

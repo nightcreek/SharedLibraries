@@ -43,6 +43,7 @@ final class WorkspaceState {
     public var canvasPixelSize: CGSize
     public var isCanvasInteracting: Bool
     public var activeSpaceWorkPlane: SpaceWorkPlane
+    public var isQuickStartExpressionTemplatesEnabled: Bool
 
     public var lastErrorMessage: String?
     public var lastToastMessage: String?
@@ -94,6 +95,7 @@ final class WorkspaceState {
         self.canvasPixelSize = .zero
         self.isCanvasInteracting = false
         self.activeSpaceWorkPlane = .xy
+        self.isQuickStartExpressionTemplatesEnabled = false
 
         self.lastErrorMessage = nil
         self.lastToastMessage = nil
@@ -1579,6 +1581,7 @@ final class WorkspaceState {
     }
 
     public var canShowQuickStartExpressionTemplates: Bool {
+        guard isQuickStartExpressionTemplatesEnabled else { return false }
         guard module == .plane else { return false }
         if case .editExisting = formulaEditSession?.mode {
             return false

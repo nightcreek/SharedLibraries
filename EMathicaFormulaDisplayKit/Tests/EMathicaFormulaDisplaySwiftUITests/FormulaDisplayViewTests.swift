@@ -2,6 +2,11 @@ import SwiftUI
 import XCTest
 @testable import EMathicaFormulaDisplaySwiftUI
 import EMathicaFormulaDisplayCore
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 @MainActor
 final class FormulaDisplayViewTests: XCTestCase {
@@ -68,5 +73,17 @@ final class FormulaDisplayViewTests: XCTestCase {
             showsDebugFrames: true
         )
         XCTAssertNotNil(type)
+    }
+
+    func testDefaultPlaceholderFillIsTransparent() {
+        let style = FormulaDisplayStyle.default
+
+#if canImport(UIKit)
+        XCTAssertEqual(UIColor(style.placeholderFillColor).cgColor.alpha, 0, accuracy: 0.001)
+#elseif canImport(AppKit)
+        XCTAssertEqual(NSColor(style.placeholderFillColor).cgColor.alpha, 0, accuracy: 0.001)
+#else
+        XCTAssertNotNil(style)
+#endif
     }
 }

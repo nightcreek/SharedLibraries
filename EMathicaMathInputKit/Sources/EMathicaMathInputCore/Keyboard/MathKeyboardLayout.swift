@@ -44,7 +44,12 @@ public enum MathKeyboardLayouts {
                         .number("numbers-8", "8"),
                         .number("numbers-9", "9"),
                         .op("numbers-mul", title: "×", raw: "*"),
-                        .op("numbers-div", title: "÷", raw: "/")
+                        .template(
+                            "numbers-div",
+                            markup: "\\frac{\\placeholder{}}{\\placeholder{}}",
+                            token: .fraction,
+                            accessibilityLabel: "分数"
+                        )
                     ]),
                     MathKeyboardRow(keys: [
                         .template(
@@ -144,15 +149,15 @@ public enum MathKeyboardLayouts {
                             token: .subscript,
                             accessibilityLabel: "下标"
                         ),
-                        .legacyTemplate(
+                        .legacyFormulaTemplate(
                             "functions-parametric-2d",
-                            title: "x(t),y(t)",
+                            markup: "\\parametric{x(t)}{y(t)}{\\placeholder{}}",
                             accessibilityLabel: "参数方程",
                             kind: .parametricEquation2D
                         ),
-                        .legacyTemplate(
+                        .legacyFormulaTemplate(
                             "functions-piecewise",
-                            title: "分段",
+                            markup: "\\piecewise{\\placeholder{}}{\\placeholder{}}{\\placeholder{}}{\\placeholder{}}",
                             accessibilityLabel: "分段函数",
                             kind: .piecewise(rows: 2)
                         ),
@@ -252,7 +257,7 @@ public enum MathKeyboardLayouts {
                         .op("symbols-plus", title: "+", raw: "+"),
                         .op("symbols-minus", title: "-", raw: "-"),
                         .op("symbols-mul", title: "×", raw: "*"),
-                        .op("symbols-div", title: "÷", raw: "/"),
+                        .op("symbols-div", title: "/", raw: "/"),
                         .op("symbols-eq", title: "=", raw: "="),
                         .char("symbols-comma", ",")
                     ]),
@@ -347,6 +352,20 @@ private extension MathKeyboardKey {
         )
     }
 
+    static func legacyFormulaTemplate(
+        _ id: String,
+        markup: String,
+        accessibilityLabel: String,
+        kind: TemplateKind
+    ) -> MathKeyboardKey {
+        MathKeyboardKey(
+            id: id,
+            label: .formulaMarkup(markup),
+            intent: .action(.insertTemplate(kind)),
+            accessibilityLabel: accessibilityLabel
+        )
+    }
+
     static func system(
         _ id: String,
         symbol: String,
@@ -363,4 +382,3 @@ private extension MathKeyboardKey {
         )
     }
 }
-

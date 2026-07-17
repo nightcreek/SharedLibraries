@@ -71,6 +71,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
         let base = box.children[0].box
         let exponent = box.children[1].box
         XCTAssertLessThan(exponent.size.height, base.size.height)
+        XCTAssertLessThan(box.children[1].origin.y, box.children[0].origin.y)
     }
 
     func testSubscriptUsesSmallerChildSizeThanBase() {
@@ -94,6 +95,26 @@ final class FormulaLayoutEngineTests: XCTestCase {
         XCTAssertEqual(box.baseline, base.origin.y + base.box.baseline, accuracy: 0.0001)
     }
 
+    func testNestedSuperscriptShrinksProgressively() {
+        let box = engine.layout(
+            .superscript(
+                base: .text("x", role: .symbol),
+                exponent: .superscript(
+                    base: .text("x", role: .symbol),
+                    exponent: .text("x", role: .symbol)
+                )
+            )
+        )
+        let outerExponent = box.children[1].box
+        guard outerExponent.children.count == 2 else {
+            return XCTFail("Expected nested script children")
+        }
+        let nestedBase = outerExponent.children[0].box
+        let nestedExponent = outerExponent.children[1].box
+        XCTAssertLessThan(outerExponent.size.height, box.children[0].box.size.height)
+        XCTAssertLessThan(nestedExponent.size.height, nestedBase.size.height)
+    }
+
     func testParenthesesExpandWidthBeyondContent() {
         let content = engine.layout(.text("x", role: .symbol))
         let box = engine.layout(.parentheses(content: .text("x", role: .symbol)))
@@ -104,6 +125,36 @@ final class FormulaLayoutEngineTests: XCTestCase {
         let content = engine.layout(.text("x", role: .symbol))
         let box = engine.layout(.absoluteValue(content: .text("x", role: .symbol)))
         XCTAssertGreaterThan(box.size.width, content.size.width)
+    }
+
+    func testParenthesesVerticallyCenterContent() {
+        let box = engine.layout(.parentheses(content: .sequence([.text("x", role: .symbol), .operatorSymbol("+"), .text("1", role: .number)])))
+        guard let content = box.children.first else {
+            return XCTFail("Expected content child")
+        }
+        XCTAssertGreaterThan(content.origin.y, 0)
+        XCTAssertLessThan(content.origin.y + content.box.size.height, box.size.height + 0.001)
+    }
+
+    func testParametricLayoutProducesMultipleRows() {
+        let box = engine.layout(.parametric2D(x: .text("x", role: .symbol), y: .text("y", role: .symbol), range: .text("t", role: .symbol)))
+        XCTAssertEqual(box.kind, .parametric2D)
+        XCTAssertGreaterThanOrEqual(box.children.count, 5)
+        XCTAssertGreaterThan(box.size.height, FormulaLayoutMetrics.default.minimumBoxSize.height)
+    }
+
+    func testPiecewiseLayoutProducesMultipleRows() {
+        let box = engine.layout(
+            .piecewise(
+                rows: [
+                    .init(expression: .text("x", role: .symbol), condition: .text("0", role: .number)),
+                    .init(expression: .text("y", role: .symbol), condition: .text("1", role: .number))
+                ]
+            )
+        )
+        XCTAssertEqual(box.kind, .piecewise)
+        XCTAssertEqual(box.children.count, 4)
+        XCTAssertGreaterThan(box.size.height, FormulaLayoutMetrics.default.minimumBoxSize.height)
     }
 
     func testCursorLayoutHasNonzeroRect() {

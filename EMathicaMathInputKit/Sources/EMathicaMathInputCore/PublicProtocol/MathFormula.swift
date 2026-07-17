@@ -44,6 +44,8 @@ public enum MathTemplateKind: String, Hashable {
     case `subscript`
     case parentheses
     case absoluteValue
+    case piecewise2
+    case parametric2D
 }
 
 /// External cursor input for display projection.

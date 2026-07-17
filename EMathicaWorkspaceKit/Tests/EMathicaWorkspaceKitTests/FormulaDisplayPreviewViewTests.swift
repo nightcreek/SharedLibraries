@@ -50,6 +50,56 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         XCTAssertNotNil(view)
     }
 
+    func testFormulaEditingDisplayViewCanInitializeWithoutChangingInteractionModel() {
+        let state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([.character("x"), .operatorSymbol("\\leq"), .character("2")]),
+                cursor: EditorCursor(path: [], offset: 3),
+                selection: nil
+            )
+        )
+
+        let view = FormulaEditingDisplayView(
+            inputState: state,
+            isFocused: true,
+            onTapCursor: { _ in },
+            onKeyboardAction: { _ in }
+        )
+
+        XCTAssertNotNil(view)
+    }
+
+    func testEditingDisplayBridgeRendersLeqAsVisibleFormulaSymbol() {
+        let state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([.character("x"), .operatorSymbol("\\leq"), .character("2")]),
+                cursor: EditorCursor(path: [], offset: 3),
+                selection: nil
+            )
+        )
+
+        let rawValue = state.displayMarkupSnapshot.rawValue
+        let plan = FormulaDisplayEngine().getPlan(from: .init(rawValue: rawValue))
+
+        XCTAssertTrue(rawValue.contains(#"\leq"#))
+        XCTAssertTrue(
+            plan.elements.contains {
+                if case .text(let element) = $0 {
+                    return element.text == "≤"
+                }
+                return false
+            }
+        )
+        XCTAssertFalse(
+            plan.elements.contains {
+                if case .text(let element) = $0 {
+                    return element.text.contains(#"\leq"#)
+                }
+                return false
+            }
+        )
+    }
+
     func testMathInputDisplayoutFeedsFormulaDisplayEngine() {
         let session = MathInputSession()
         session.input(.template(.fraction))

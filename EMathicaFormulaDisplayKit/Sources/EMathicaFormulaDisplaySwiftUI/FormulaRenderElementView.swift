@@ -31,13 +31,13 @@ struct FormulaRenderElementView: View {
                 let rect = radical.frame
                 let startX = rect.origin.x
                 let startY = rect.maxY
-                path.move(to: CGPoint(x: startX, y: startY - rect.size.height * 0.28))
-                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.18, y: startY))
-                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.34, y: rect.origin.y + rect.size.height * 0.18))
+                path.move(to: CGPoint(x: startX, y: startY - rect.size.height * 0.22))
+                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.16, y: startY))
+                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.3, y: rect.origin.y + rect.size.height * 0.42))
                 path.addLine(to: CGPoint(x: radical.overlineStart.x, y: radical.overlineStart.y))
                 path.addLine(to: CGPoint(x: radical.overlineEnd.x, y: radical.overlineEnd.y))
             }
-            .stroke(color(for: radical), lineWidth: 1)
+            .stroke(color(for: radical), lineWidth: max(1, radical.frame.size.height * 0.04))
         case .cursor(let cursor):
             if showsCursor {
                 Rectangle()
@@ -77,9 +77,15 @@ struct FormulaRenderElementView: View {
         let estimatedSize = max(element.frame.size.height * 0.72, 8)
         switch element.fontRole {
         case .script:
-            return .system(size: estimatedSize * style.scriptScale)
-        case .normal, .operatorSymbol, .function, .raw, .error:
-            return style.baseFont
+            return .system(size: estimatedSize * style.scriptScale, weight: .semibold, design: .rounded)
+        case .operatorSymbol:
+            return .system(size: estimatedSize, weight: .semibold, design: .rounded)
+        case .function:
+            return .system(size: estimatedSize, weight: .medium, design: .rounded)
+        case .raw, .error:
+            return .system(size: estimatedSize, weight: .regular, design: .rounded)
+        case .normal:
+            return .system(size: estimatedSize, weight: .semibold, design: .rounded)
         }
     }
 

@@ -127,6 +127,51 @@ final class EMathicaMathInputCoreTests: XCTestCase {
         XCTAssertEqual(state.cursor.offset, 1)
     }
 
+    func testDeleteBackwardAfterFractionBoundaryReturnsToNumeratorThenDeletesFraction() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertTemplate(.fraction), state: &state)
+        controller.handle(.insertCharacter("x"), state: &state)
+        controller.handle(.tab, state: &state)
+
+        controller.handle(.deleteBackward, state: &state)
+        XCTAssertEqual(state.cursor.path, [.sequenceIndex(0), .templateField(.numerator)])
+        XCTAssertEqual(state.cursor.offset, 1)
+
+        controller.handle(.deleteBackward, state: &state)
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "")
+        XCTAssertEqual(state.cursor.path, [])
+        XCTAssertEqual(state.cursor.offset, 0)
+    }
+
+    func testDeleteBackwardOnEmptySqrtRemovesStructure() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertTemplate(.sqrt), state: &state)
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "")
+        XCTAssertEqual(state.cursor.path, [])
+        XCTAssertEqual(state.cursor.offset, 0)
+    }
+
+    func testDeleteBackwardOnEmptySuperscriptUnwrapsBase() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertCharacter("x"), state: &state)
+        controller.handle(.insertTemplate(.superscript), state: &state)
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "x")
+        XCTAssertEqual(state.cursor.path, [])
+        XCTAssertEqual(state.cursor.offset, 1)
+    }
+
     func testLegacyAliasesMapToCanonicalActions() {
         XCTAssertEqual(InputController.canonicalAction(for: .backspace), .deleteBackward)
         XCTAssertEqual(InputController.canonicalAction(for: .delete), .deleteForward)

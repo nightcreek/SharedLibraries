@@ -6,6 +6,16 @@ public enum FormulaTextRole: Equatable, Sendable {
     case raw
 }
 
+public struct FormulaPiecewiseRow: Equatable, Sendable {
+    public var expression: FormulaDisplayNode
+    public var condition: FormulaDisplayNode
+
+    public init(expression: FormulaDisplayNode, condition: FormulaDisplayNode) {
+        self.expression = expression
+        self.condition = condition
+    }
+}
+
 public indirect enum FormulaDisplayNode: Equatable, Sendable {
     case sequence([FormulaDisplayNode])
     case text(String, role: FormulaTextRole)
@@ -18,6 +28,8 @@ public indirect enum FormulaDisplayNode: Equatable, Sendable {
     case scriptPair(base: FormulaDisplayNode, subscriptNode: FormulaDisplayNode?, superscriptNode: FormulaDisplayNode?)
     case parentheses(content: FormulaDisplayNode)
     case absoluteValue(content: FormulaDisplayNode)
+    case parametric2D(x: FormulaDisplayNode, y: FormulaDisplayNode, range: FormulaDisplayNode?)
+    case piecewise(rows: [FormulaPiecewiseRow])
     case cursor
     case placeholder
     case raw(String)

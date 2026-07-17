@@ -31,6 +31,8 @@ public struct FormulaLayoutBox: Equatable, Sendable {
         case scriptPair
         case parentheses
         case absoluteValue
+        case parametric2D
+        case piecewise
         case placeholder
         case cursor
         case raw

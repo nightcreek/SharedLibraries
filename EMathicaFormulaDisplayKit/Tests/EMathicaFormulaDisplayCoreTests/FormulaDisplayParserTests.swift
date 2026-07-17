@@ -122,6 +122,42 @@ final class FormulaDisplayParserTests: XCTestCase {
         )
     }
 
+    func testParsesGreekSymbolCommands() {
+        let expectedPairs: [(String, String)] = [
+            (#"\alpha"#, "α"),
+            (#"\epsilon"#, "ε"),
+            (#"\theta"#, "θ"),
+            (#"\pi"#, "π"),
+            (#"\omega"#, "ω"),
+            (#"\Gamma"#, "Γ"),
+            (#"\Theta"#, "Θ"),
+            (#"\Omega"#, "Ω")
+        ]
+
+        for (command, symbol) in expectedPairs {
+            XCTAssertEqual(
+                parser.parse(.init(rawValue: command)),
+                .text(symbol, role: .symbol),
+                "Expected \(command) to render as \(symbol)"
+            )
+        }
+    }
+
+    func testParsesOperatorSymbolCommands() {
+        XCTAssertEqual(
+            parser.parse(.init(rawValue: #"\times"#)),
+            .operatorSymbol("×")
+        )
+        XCTAssertEqual(
+            parser.parse(.init(rawValue: #"\div"#)),
+            .operatorSymbol("÷")
+        )
+        XCTAssertEqual(
+            parser.parse(.init(rawValue: #"\leq"#)),
+            .operatorSymbol("≤")
+        )
+    }
+
     func testParsesParentheses() {
         XCTAssertEqual(
             parser.parse(.init(rawValue: "(x+1)")),
@@ -164,6 +200,57 @@ final class FormulaDisplayParserTests: XCTestCase {
             .fraction(
                 numerator: .text("x", role: .symbol),
                 denominator: .sequence([.cursor, .placeholder])
+            )
+        )
+    }
+
+    func testParsesParametricCommand() {
+        XCTAssertEqual(
+            parser.parse(.init(rawValue: #"\parametric{x(t)}{y(t)}{t>0}"#)),
+            .parametric2D(
+                x: .sequence([
+                    .text("x", role: .symbol),
+                    .parentheses(
+                        content: .text("t", role: .symbol)
+                    )
+                ]),
+                y: .sequence([
+                    .text("y", role: .symbol),
+                    .parentheses(
+                        content: .text("t", role: .symbol)
+                    )
+                ]),
+                range: .sequence([
+                    .text("t", role: .symbol),
+                    .operatorSymbol(">"),
+                    .text("0", role: .number)
+                ])
+            )
+        )
+    }
+
+    func testParsesPiecewiseCommand() {
+        XCTAssertEqual(
+            parser.parse(.init(rawValue: #"\piecewise{x}{x<0}{y}{x\geq0}"#)),
+            .piecewise(
+                rows: [
+                    .init(
+                        expression: .text("x", role: .symbol),
+                        condition: .sequence([
+                            .text("x", role: .symbol),
+                            .operatorSymbol("<"),
+                            .text("0", role: .number)
+                        ])
+                    ),
+                    .init(
+                        expression: .text("y", role: .symbol),
+                        condition: .sequence([
+                            .text("x", role: .symbol),
+                            .operatorSymbol("≥"),
+                            .text("0", role: .number)
+                        ])
+                    )
+                ]
             )
         )
     }

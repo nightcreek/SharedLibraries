@@ -458,14 +458,112 @@ public final class InputController {
                 return true
             }
             if context.field == .denominator {
-                state.cursor.path = context.templatePath + [.templateField(.numerator)]
-                state.cursor.offset = MathEditorTree.sequence(at: state.cursor.path, in: state.root)?.count ?? 0
+                if numeratorEmpty {
+                    parentSequence.remove(at: templateIndex.index)
+                    MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                    state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                } else {
+                    moveCursorToTemplateFieldEnd(.numerator, in: context.templatePath, state: &state)
+                }
+                return true
+            }
+            if numeratorEmpty {
+                parentSequence.remove(at: templateIndex.index)
+                MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                return true
+            }
+            return false
+
+        case .sin, .cos, .tan, .ln, .exp:
+            parentSequence.remove(at: templateIndex.index)
+            MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+            state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+            return true
+
+        case .log:
+            let baseEmpty = (context.template.field(.base) ?? .placeholder).isEmptyForEditing
+            let argumentEmpty = (context.template.field(.argument) ?? .placeholder).isEmptyForEditing
+            if baseEmpty && argumentEmpty {
+                parentSequence.remove(at: templateIndex.index)
+                MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                return true
+            }
+            if context.field == .argument, !baseEmpty {
+                moveCursorToTemplateFieldEnd(.base, in: context.templatePath, state: &state)
+                return true
+            }
+            if context.field == .base, argumentEmpty {
+                parentSequence.remove(at: templateIndex.index)
+                MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                return true
+            }
+            return false
+
+        case .piecewise(let rows):
+            if allTemplateFieldsEmpty(context.template) {
+                parentSequence.remove(at: templateIndex.index)
+                MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                return true
+            }
+            if let previousField = previousPiecewiseField(current: context.field, rows: rows) {
+                moveCursorToTemplateFieldEnd(previousField, in: context.templatePath, state: &state)
+                return true
+            }
+            return false
+
+        case .parametricEquation2D:
+            if allTemplateFieldsEmpty(context.template) {
+                parentSequence.remove(at: templateIndex.index)
+                MathEditorTree.setSequence(parentSequence, at: templateIndex.parentPath, in: &state.root)
+                state.cursor = EditorCursor(path: templateIndex.parentPath, offset: templateIndex.index)
+                return true
+            }
+            if let previousField = previousParametricField(current: context.field) {
+                moveCursorToTemplateFieldEnd(previousField, in: context.templatePath, state: &state)
                 return true
             }
             return false
 
         default:
             return false
+        }
+    }
+
+    private func allTemplateFieldsEmpty(_ template: TemplateNode) -> Bool {
+        template.fields.allSatisfy { $0.node.isEmptyForEditing }
+    }
+
+    private func moveCursorToTemplateFieldEnd(
+        _ field: FieldID,
+        in templatePath: [EditorPathComponent],
+        state: inout EditorState
+    ) {
+        state.cursor.path = templatePath + [.templateField(field)]
+        state.cursor.offset = MathEditorTree.sequence(at: state.cursor.path, in: state.root)?.count ?? 0
+    }
+
+    private func previousPiecewiseField(current: FieldID, rows: Int) -> FieldID? {
+        let order = (0..<rows).flatMap { row in
+            [FieldID.rowExpression(row), .rowCondition(row)]
+        }
+        guard let index = order.firstIndex(of: current), index > 0 else {
+            return nil
+        }
+        return order[index - 1]
+    }
+
+    private func previousParametricField(current: FieldID) -> FieldID? {
+        switch current {
+        case .parametricExpression(1):
+            return .parametricExpression(0)
+        case .parametricRange:
+            return .parametricExpression(1)
+        default:
+            return nil
         }
     }
 

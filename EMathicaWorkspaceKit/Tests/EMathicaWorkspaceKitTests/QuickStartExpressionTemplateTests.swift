@@ -35,6 +35,14 @@ final class QuickStartExpressionTemplateTests: XCTestCase {
     }
 
     @MainActor
+    func testQuickStartTemplatesAreDisabledByDefaultInProduction() {
+        let state = makePlaneState(objects: [])
+
+        XCTAssertFalse(state.isQuickStartExpressionTemplatesEnabled)
+        XCTAssertFalse(state.canShowQuickStartExpressionTemplates)
+    }
+
+    @MainActor
     func testQuickStartTemplatesHideWhileEditingExistingObject() {
         let object = MathObject(
             name: "g",
@@ -47,6 +55,7 @@ final class QuickStartExpressionTemplateTests: XCTestCase {
             style: MathStyle(colorToken: "green")
         )
         let state = makePlaneState(objects: [object])
+        state.isQuickStartExpressionTemplatesEnabled = true
 
         XCTAssertTrue(state.canShowQuickStartExpressionTemplates)
 

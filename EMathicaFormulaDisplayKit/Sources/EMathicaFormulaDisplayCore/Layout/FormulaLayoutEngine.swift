@@ -45,6 +45,10 @@ public struct FormulaLayoutEngine: Sendable {
             return layoutDelimited(content: content, kind: .parentheses, metrics: metrics, path: path)
         case .absoluteValue(let content):
             return layoutDelimited(content: content, kind: .absoluteValue, metrics: metrics, path: path)
+        case .parametric2D(let x, let y, let range):
+            return layoutParametric2D(x: x, y: y, range: range, metrics: metrics, path: path)
+        case .piecewise(let rows):
+            return layoutPiecewise(rows: rows, metrics: metrics, path: path)
         case .cursor:
             return layoutCursor(metrics: metrics, path: path)
         case .placeholder:
@@ -322,12 +326,14 @@ public struct FormulaLayoutEngine: Sendable {
         var placements: [(FormulaLayoutBox, FormulaPoint)] = [(baseBox, .zero)]
 
         if let superscriptBox {
-            let y = parentBaseline - metrics.scriptVerticalRaise - superscriptBox.baseline
+            let raise = max(metrics.scriptVerticalRaise, superscriptBox.size.height * 0.35)
+            let y = parentBaseline - raise - superscriptBox.baseline
             placements.append((superscriptBox, .init(x: baseBox.size.width, y: y)))
         }
 
         if let subscriptBox {
-            let y = parentBaseline + metrics.subscriptVerticalDrop - subscriptBox.baseline
+            let drop = max(metrics.subscriptVerticalDrop, subscriptBox.size.height * 0.3)
+            let y = parentBaseline + drop - subscriptBox.baseline
             placements.append((subscriptBox, .init(x: baseBox.size.width, y: y)))
         }
 
@@ -363,9 +369,12 @@ public struct FormulaLayoutEngine: Sendable {
         let contentBox = layout(content, metrics: metrics, path: "\(path).content")
         let delimiterWidth = max(metrics.baseFontSize * 0.3, metrics.delimiterHorizontalPadding)
         let horizontalInset = delimiterWidth + metrics.delimiterHorizontalPadding
-        let childOrigin = FormulaPoint(x: horizontalInset, y: 0)
+        let height = max(contentBox.size.height + metrics.sqrtOverlineGap, metrics.minimumBoxSize.height)
+        let childOrigin = FormulaPoint(
+            x: horizontalInset,
+            y: max(0, (height - contentBox.size.height) / 2)
+        )
         let width = contentBox.size.width + horizontalInset * 2
-        let height = max(contentBox.size.height, metrics.minimumBoxSize.height)
         let size = FormulaSize(width: width, height: height)
 
         return makeBox(
@@ -376,6 +385,135 @@ public struct FormulaLayoutEngine: Sendable {
             children: [.init(box: contentBox, origin: childOrigin)],
             bounds: .init(origin: .zero, size: size)
         )
+    }
+
+    private func layoutParametric2D(
+        x: FormulaDisplayNode,
+        y: FormulaDisplayNode,
+        range: FormulaDisplayNode?,
+        metrics: FormulaLayoutMetrics,
+        path: String
+    ) -> FormulaLayoutBox {
+        let rowMetrics = metrics
+        let xLabel = layoutText("x(t)=", kind: .text, textRole: .raw, metrics: rowMetrics, path: "\(path).xlabel")
+        let yLabel = layoutText("y(t)=", kind: .text, textRole: .raw, metrics: rowMetrics, path: "\(path).ylabel")
+        let xBox = layout(x, metrics: rowMetrics, path: "\(path).x")
+        let yBox = layout(y, metrics: rowMetrics, path: "\(path).y")
+        let rangeLabel = layoutText("t:", kind: .text, textRole: .raw, metrics: rowMetrics.scaledForScript(), path: "\(path).rangelabel")
+        let rangeBox = range.map { layout($0, metrics: rowMetrics.scaledForScript(), path: "\(path).range") }
+
+        let labelWidth = max(xLabel.size.width, yLabel.size.width, rangeLabel.size.width)
+        let rowGap = max(metrics.functionSpacing, 4)
+        let rowOneHeight = max(xLabel.size.height, xBox.size.height)
+        let rowTwoHeight = max(yLabel.size.height, yBox.size.height)
+        let rowThreeHeight = max(rangeLabel.size.height, rangeBox?.size.height ?? 0)
+        let rangePresent = rangeBox != nil && !(rangeBox.map(isVisiblyEmpty) ?? true)
+
+        var children: [FormulaLayoutChild] = []
+        let xLabelY = max(0, (rowOneHeight - xLabel.size.height) / 2)
+        let xNodeY = max(0, (rowOneHeight - xBox.size.height) / 2)
+        children.append(.init(box: xLabel, origin: .init(x: 0, y: xLabelY)))
+        children.append(.init(box: xBox, origin: .init(x: labelWidth + metrics.functionSpacing, y: xNodeY)))
+
+        let secondRowY = rowOneHeight + rowGap
+        let yLabelY = secondRowY + max(0, (rowTwoHeight - yLabel.size.height) / 2)
+        let yNodeY = secondRowY + max(0, (rowTwoHeight - yBox.size.height) / 2)
+        children.append(.init(box: yLabel, origin: .init(x: 0, y: yLabelY)))
+        children.append(.init(box: yBox, origin: .init(x: labelWidth + metrics.functionSpacing, y: yNodeY)))
+
+        var totalHeight = rowOneHeight + rowGap + rowTwoHeight
+        if rangePresent, let rangeBox {
+            let thirdRowY = totalHeight + rowGap
+            let rangeLabelY = thirdRowY + max(0, (rowThreeHeight - rangeLabel.size.height) / 2)
+            let rangeNodeY = thirdRowY + max(0, (rowThreeHeight - rangeBox.size.height) / 2)
+            children.append(.init(box: rangeLabel, origin: .init(x: 0, y: rangeLabelY)))
+            children.append(.init(box: rangeBox, origin: .init(x: labelWidth + metrics.functionSpacing, y: rangeNodeY)))
+            totalHeight = thirdRowY + rowThreeHeight
+        }
+
+        let contentWidth = max(xBox.size.width, yBox.size.width, rangeBox?.size.width ?? 0)
+        let size = FormulaSize(
+            width: max(metrics.minimumBoxSize.width, labelWidth + metrics.functionSpacing + contentWidth),
+            height: max(totalHeight, metrics.minimumBoxSize.height)
+        )
+        let baseline = children
+            .filter { $0.box.id.rawValue.hasSuffix(".xlabel") || $0.box.id.rawValue.hasSuffix(".x") }
+            .map { $0.origin.y + $0.box.baseline }
+            .max() ?? (size.height * 0.45)
+
+        return makeBox(
+            id: path,
+            kind: .parametric2D,
+            size: size,
+            baseline: baseline,
+            children: children,
+            bounds: .init(origin: .zero, size: size)
+        )
+    }
+
+    private func layoutPiecewise(
+        rows: [FormulaPiecewiseRow],
+        metrics: FormulaLayoutMetrics,
+        path: String
+    ) -> FormulaLayoutBox {
+        let rowGap = max(metrics.functionSpacing, 4)
+        let expressionBoxes = rows.enumerated().map {
+            layout($0.element.expression, metrics: metrics, path: "\(path).expr\($0.offset)")
+        }
+        let conditionBoxes = rows.enumerated().map {
+            layout($0.element.condition, metrics: metrics, path: "\(path).cond\($0.offset)")
+        }
+        let expressionWidth = expressionBoxes.map(\.size.width).max() ?? 0
+        let conditionWidth = conditionBoxes.map(\.size.width).max() ?? 0
+        let braceWidth = max(metrics.baseFontSize * 0.35, metrics.delimiterHorizontalPadding * 1.5)
+        let spacing = metrics.functionSpacing
+
+        var children: [FormulaLayoutChild] = []
+        var y = 0.0
+        var firstRowBaseline = 0.0
+
+        for index in rows.indices {
+            let expr = expressionBoxes[index]
+            let cond = conditionBoxes[index]
+            let rowHeight = max(expr.size.height, cond.size.height)
+            let exprY = y + max(0, (rowHeight - expr.size.height) / 2)
+            let condY = y + max(0, (rowHeight - cond.size.height) / 2)
+            let exprX = braceWidth + spacing
+            let condX = exprX + expressionWidth + spacing
+            children.append(.init(box: expr, origin: .init(x: exprX, y: exprY)))
+            children.append(.init(box: cond, origin: .init(x: condX, y: condY)))
+            if index == 0 {
+                firstRowBaseline = exprY + expr.baseline
+            }
+            y += rowHeight
+            if index < rows.count - 1 {
+                y += rowGap
+            }
+        }
+
+        let size = FormulaSize(
+            width: max(metrics.minimumBoxSize.width, braceWidth + spacing + expressionWidth + spacing + conditionWidth),
+            height: max(y, metrics.minimumBoxSize.height)
+        )
+
+        return makeBox(
+            id: path,
+            kind: .piecewise,
+            size: size,
+            baseline: firstRowBaseline > 0 ? firstRowBaseline : size.height * 0.35,
+            children: children,
+            bounds: .init(origin: .zero, size: size)
+        )
+    }
+
+    private func isVisiblyEmpty(_ box: FormulaLayoutBox) -> Bool {
+        if box.kind == .placeholder || box.kind == .cursor {
+            return true
+        }
+        if let textContent = box.textContent {
+            return textContent.isEmpty
+        }
+        return box.children.isEmpty && box.size.width <= 0
     }
 
     private func layoutCursor(

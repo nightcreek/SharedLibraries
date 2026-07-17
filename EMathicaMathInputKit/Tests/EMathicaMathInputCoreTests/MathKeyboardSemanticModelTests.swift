@@ -17,6 +17,9 @@ final class MathKeyboardSemanticModelTests: XCTestCase {
         XCTAssertTrue(keys.contains(where: { $0.label == .formulaMarkup(#"\sqrt{\placeholder{}}"#) }))
         XCTAssertTrue(keys.contains(where: { $0.label == .formulaMarkup("x^{2}") || $0.label == .formulaMarkup("x^{y}") }))
         XCTAssertTrue(keys.contains(where: { $0.intent.keyboardAction == .deleteBackward }))
+        XCTAssertTrue(keys.contains(where: { $0.id == "numbers-div" && $0.intent.keyboardAction == .insertTemplate(.fraction) }))
+        XCTAssertTrue(keys.contains(where: { $0.label == .formulaMarkup(#"\parametric{x(t)}{y(t)}{\placeholder{}}"#) }))
+        XCTAssertTrue(keys.contains(where: { $0.label == .formulaMarkup(#"\piecewise{\placeholder{}}{\placeholder{}}{\placeholder{}}{\placeholder{}}"#) }))
     }
 
     func testFormulaMarkupLabelsAreNonEmpty() {
@@ -49,4 +52,3 @@ final class MathKeyboardSemanticModelTests: XCTestCase {
         })
     }
 }
-

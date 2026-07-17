@@ -169,4 +169,38 @@ final class MathInputSessionTests: XCTestCase {
             XCTAssertFalse(session.displayout().rawValue.isEmpty)
         }
     }
+
+    func testDisplayoutProjectsStructuredPiecewiseMarkup() {
+        let session = MathInputSession()
+
+        session.apply(.insertTemplate(.piecewise(rows: 2)))
+        session.apply(.insertCharacter("x"))
+        session.apply(.moveRight)
+        session.apply(.insertCharacter("0"))
+        session.apply(.moveRight)
+        session.apply(.insertCharacter("y"))
+        session.apply(.moveRight)
+        session.apply(.insertCharacter("1"))
+
+        XCTAssertEqual(
+            session.displayout().rawValue,
+            #"\piecewise{x}{0}{y}{1\cursor{}}"#
+        )
+    }
+
+    func testDisplayoutProjectsStructuredParametricMarkup() {
+        let session = MathInputSession()
+
+        session.apply(.insertTemplate(.parametricEquation2D))
+        session.apply(.insertCharacter("x"))
+        session.apply(.moveDown)
+        session.apply(.insertCharacter("y"))
+        session.apply(.moveDown)
+        session.apply(.insertCharacter("t"))
+
+        XCTAssertEqual(
+            session.displayout().rawValue,
+            #"\parametric{x}{y}{t\cursor{}}"#
+        )
+    }
 }

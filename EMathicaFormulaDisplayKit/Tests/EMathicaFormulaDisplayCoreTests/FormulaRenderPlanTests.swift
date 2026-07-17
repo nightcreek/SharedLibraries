@@ -160,6 +160,35 @@ final class FormulaRenderPlanTests: XCTestCase {
         }.count, 2)
     }
 
+    func testParametricPlanEmitsVisibleElements() {
+        let plan = engine.getPlan(from: .init(rawValue: #"\parametric{x}{y}{t>0}"#))
+        let texts = plan.elements.compactMap { element -> String? in
+            if case .text(let text) = element { return text.text }
+            return nil
+        }
+        XCTAssertTrue(texts.contains("x(t)="))
+        XCTAssertTrue(texts.contains("y(t)="))
+        XCTAssertTrue(texts.contains("x"))
+        XCTAssertTrue(texts.contains("y"))
+        XCTAssertEqual(plan.rootLayoutBox?.kind, .parametric2D)
+    }
+
+    func testPiecewisePlanEmitsBraceAndRowContent() {
+        let plan = engine.getPlan(from: .init(rawValue: #"\piecewise{x}{x<0}{y}{x\geq0}"#))
+        let delimiterCount = plan.elements.filter {
+            if case .line(let line) = $0 { return line.role == .delimiter }
+            return false
+        }.count
+        let texts = plan.elements.compactMap { element -> String? in
+            if case .text(let text) = element { return text.text }
+            return nil
+        }
+        XCTAssertGreaterThanOrEqual(delimiterCount, 3)
+        XCTAssertTrue(texts.contains("x"))
+        XCTAssertTrue(texts.contains("y"))
+        XCTAssertEqual(plan.rootLayoutBox?.kind, .piecewise)
+    }
+
     func testSimpleFormulaEmitsBounds() {
         let plan = engine.getPlan(from: .init(rawValue: "x+1"))
         XCTAssertGreaterThan(plan.bounds.size.width, 0)

@@ -25,7 +25,7 @@ public struct FormulaDisplayStyle {
         errorTextColor: Color = .red,
         cursorColor: Color = .accentColor,
         placeholderStrokeColor: Color = .secondary,
-        placeholderFillColor: Color = Color.secondary.opacity(0.12),
+        placeholderFillColor: Color = .clear,
         fractionLineColor: Color = .primary,
         radicalColor: Color = .primary,
         delimiterColor: Color = .primary,

@@ -171,6 +171,32 @@ public enum MathFormulaProjection {
                     ]
                 )
             )
+        case .piecewise(let rows):
+            if rows == 2 {
+                return .template(
+                    MathTemplateFormula(
+                        kind: .piecewise2,
+                        fields: [
+                            projectField(template.field(.rowExpression(0))),
+                            projectField(template.field(.rowCondition(0))),
+                            projectField(template.field(.rowExpression(1))),
+                            projectField(template.field(.rowCondition(1)))
+                        ]
+                    )
+                )
+            }
+            return fallbackRawLatex(for: template)
+        case .parametricEquation2D:
+            return .template(
+                MathTemplateFormula(
+                    kind: .parametric2D,
+                    fields: [
+                        projectField(template.field(.parametricExpression(0))),
+                        projectField(template.field(.parametricExpression(1))),
+                        projectField(template.field(.parametricRange))
+                    ]
+                )
+            )
         case .sin, .cos, .tan, .ln, .exp:
             return .function(
                 MathFunctionFormula(
@@ -201,8 +227,6 @@ public enum MathFormulaProjection {
              .integral,
              .matrix,
              .cases,
-             .piecewise,
-             .parametricEquation2D,
              .parametricEquation3D:
             return fallbackRawLatex(for: template)
         }

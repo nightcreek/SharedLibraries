@@ -23,8 +23,8 @@ public struct FormulaLayoutMetrics: Equatable, Sendable {
 
     public init(
         baseFontSize: Double = 20,
-        scriptScale: Double = 0.75,
-        minimumFontSize: Double = 10,
+        scriptScale: Double = 0.64,
+        minimumFontSize: Double = 9,
         operatorSpacing: Double = 4,
         functionSpacing: Double = 4,
         fractionHorizontalPadding: Double = 8,
@@ -32,8 +32,8 @@ public struct FormulaLayoutMetrics: Equatable, Sendable {
         fractionLineThickness: Double = 1,
         sqrtHorizontalPadding: Double = 6,
         sqrtOverlineGap: Double = 2,
-        scriptVerticalRaise: Double = 10,
-        subscriptVerticalDrop: Double = 6,
+        scriptVerticalRaise: Double = 12,
+        subscriptVerticalDrop: Double = 8,
         delimiterHorizontalPadding: Double = 4,
         absoluteValueStrokeWidth: Double = 1,
         rawFallbackPadding: Double = 4,

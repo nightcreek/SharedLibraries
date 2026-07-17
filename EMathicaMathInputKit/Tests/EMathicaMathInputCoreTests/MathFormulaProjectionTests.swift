@@ -133,7 +133,7 @@ final class MathFormulaProjectionTests: XCTestCase {
         )
     }
 
-    func testDeferredTemplateProjectsToRawLatexFallback() {
+    func testPiecewiseTemplateProjectsToStructuredFormula() {
         let root = MathNode.sequence([
             .template(
                 TemplateNode(
@@ -150,13 +150,55 @@ final class MathFormulaProjectionTests: XCTestCase {
 
         let projected = MathFormulaProjection.project(root)
 
-        guard case .sequence(let items) = projected,
-              items.count == 1,
-              case .rawLatex(let value) = items[0] else {
-            return XCTFail("Expected rawLatex fallback, got \(projected)")
-        }
+        XCTAssertEqual(
+            projected,
+            .sequence([
+                .template(
+                    .init(
+                        kind: .piecewise2,
+                        fields: [
+                            .sequence([.symbol("x")]),
+                            .sequence([.symbol("x")]),
+                            .sequence([.symbol("y")]),
+                            .sequence([.symbol("y")])
+                        ]
+                    )
+                )
+            ])
+        )
+    }
 
-        XCTAssertTrue(value.contains("\\begin{cases}"))
+    func testParametricTemplateProjectsToStructuredFormula() {
+        let root = MathNode.sequence([
+            .template(
+                TemplateNode(
+                    kind: .parametricEquation2D,
+                    fields: [
+                        TemplateField(id: .parametricExpression(0), node: .sequence([.character("x")])),
+                        TemplateField(id: .parametricExpression(1), node: .sequence([.character("y")])),
+                        TemplateField(id: .parametricRange, node: .sequence([.character("t")]))
+                    ]
+                )
+            )
+        ])
+
+        let projected = MathFormulaProjection.project(root)
+
+        XCTAssertEqual(
+            projected,
+            .sequence([
+                .template(
+                    .init(
+                        kind: .parametric2D,
+                        fields: [
+                            .sequence([.symbol("x")]),
+                            .sequence([.symbol("y")]),
+                            .sequence([.symbol("t")])
+                        ]
+                    )
+                )
+            ])
+        )
     }
 
     func testAdditionalUnsupportedTemplatesUseStableRawLatexFallback() {

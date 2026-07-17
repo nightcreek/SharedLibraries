@@ -67,4 +67,46 @@ final class FormulaDisplayEngineTests: XCTestCase {
             )
         )
     }
+
+    func testEnginePlanForGreekSymbolCommandHasVisibleTextElement() {
+        let plan = FormulaDisplayEngine().getPlan(from: FormulaDisplayMarkup(rawValue: #"\theta"#))
+
+        XCTAssertTrue(
+            plan.elements.contains {
+                if case .text(let element) = $0 {
+                    return element.text == "θ"
+                }
+                return false
+            }
+        )
+        XCTAssertEqual(plan.rootNode, .text("θ", role: .symbol))
+    }
+
+    func testEnginePlanForUppercaseGreekSymbolCommandHasVisibleTextElement() {
+        let plan = FormulaDisplayEngine().getPlan(from: FormulaDisplayMarkup(rawValue: #"\Omega"#))
+
+        XCTAssertTrue(
+            plan.elements.contains {
+                if case .text(let element) = $0 {
+                    return element.text == "Ω"
+                }
+                return false
+            }
+        )
+        XCTAssertEqual(plan.rootNode, .text("Ω", role: .symbol))
+    }
+
+    func testEnginePlanForOperatorCommandHasVisibleOperatorElement() {
+        let plan = FormulaDisplayEngine().getPlan(from: FormulaDisplayMarkup(rawValue: #"\times"#))
+
+        XCTAssertTrue(
+            plan.elements.contains {
+                if case .text(let element) = $0 {
+                    return element.text == "×"
+                }
+                return false
+            }
+        )
+        XCTAssertEqual(plan.rootNode, .operatorSymbol("×"))
+    }
 }

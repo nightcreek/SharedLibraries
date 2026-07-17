@@ -28,13 +28,18 @@ let package = Package(
                 "EMathicaDocumentKit",
                 "EMathicaThemeKit",
                 .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit"),
+                .product(name: "EMathicaMathInputUI", package: "EMathicaMathInputKit"),
                 .product(name: "EMathicaFormulaDisplaySwiftUI", package: "EMathicaFormulaDisplayKit")
             ],
             path: "Sources/EMathicaWorkspaceKit"
         ),
         .testTarget(
             name: "EMathicaWorkspaceKitTests",
-            dependencies: ["EMathicaWorkspaceKit"],
+            dependencies: [
+                "EMathicaWorkspaceKit",
+                .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit"),
+                .product(name: "EMathicaMathInputUI", package: "EMathicaMathInputKit")
+            ],
             path: "Tests/EMathicaWorkspaceKitTests"
         )
     ]

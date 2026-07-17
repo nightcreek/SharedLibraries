@@ -105,6 +105,10 @@ public struct FormulaRenderPlanBuilder: Sendable {
             result.elements.append(contentsOf: delimiterElements(for: box, absoluteBounds: absoluteBounds, left: "(", right: ")"))
         case .absoluteValue:
             result.elements.append(contentsOf: absoluteValueElements(for: box, absoluteBounds: absoluteBounds, metrics: context.metrics))
+        case .piecewise:
+            result.elements.append(contentsOf: piecewiseBraceElements(for: box, absoluteBounds: absoluteBounds, metrics: context.metrics))
+        case .parametric2D:
+            break
         case .cursor:
             if context.options.cursorVisible {
                 result.elements.append(.cursor(.init(id: box.id, frame: absoluteBounds)))
@@ -171,18 +175,63 @@ public struct FormulaRenderPlanBuilder: Sendable {
     ) -> [FormulaRenderElement] {
         guard let contentChild = box.children.first else { return [] }
         let strokeWidth = max(metrics.absoluteValueStrokeWidth, 1)
-        let leftWidth = max(contentChild.origin.x / 2, strokeWidth)
+        let leadingInset = max((contentChild.origin.x - strokeWidth) / 2, 0)
         let leftFrame = FormulaRect(
-            origin: absoluteBounds.origin,
-            size: .init(width: leftWidth, height: absoluteBounds.size.height)
+            origin: .init(x: absoluteBounds.minX + leadingInset, y: absoluteBounds.minY),
+            size: .init(width: strokeWidth, height: absoluteBounds.size.height)
         )
         let rightFrame = FormulaRect(
-            origin: .init(x: absoluteBounds.maxX - leftWidth, y: absoluteBounds.minY),
-            size: .init(width: leftWidth, height: absoluteBounds.size.height)
+            origin: .init(x: absoluteBounds.maxX - leadingInset - strokeWidth, y: absoluteBounds.minY),
+            size: .init(width: strokeWidth, height: absoluteBounds.size.height)
         )
         return [
             .line(.init(id: box.id, frame: leftFrame, role: .delimiter)),
             .line(.init(id: box.id, frame: rightFrame, role: .delimiter))
+        ]
+    }
+
+    private func piecewiseBraceElements(
+        for box: FormulaLayoutBox,
+        absoluteBounds: FormulaRect,
+        metrics: FormulaLayoutMetrics
+    ) -> [FormulaRenderElement] {
+        let strokeWidth = max(metrics.absoluteValueStrokeWidth, 1)
+        let braceWidth = max(metrics.baseFontSize * 0.22, metrics.delimiterHorizontalPadding)
+        let halfHeight = absoluteBounds.size.height / 2
+        let centerY = absoluteBounds.minY + halfHeight
+        let leftX = absoluteBounds.minX + strokeWidth / 2
+
+        return [
+            .line(
+                .init(
+                    id: box.id,
+                    frame: .init(
+                        origin: .init(x: leftX + braceWidth, y: absoluteBounds.minY),
+                        size: .init(width: strokeWidth, height: halfHeight - strokeWidth)
+                    ),
+                    role: .delimiter
+                )
+            ),
+            .line(
+                .init(
+                    id: box.id,
+                    frame: .init(
+                        origin: .init(x: leftX + braceWidth, y: centerY + strokeWidth),
+                        size: .init(width: strokeWidth, height: max(absoluteBounds.maxY - centerY - strokeWidth, strokeWidth))
+                    ),
+                    role: .delimiter
+                )
+            ),
+            .line(
+                .init(
+                    id: box.id,
+                    frame: .init(
+                        origin: .init(x: leftX, y: centerY - strokeWidth / 2),
+                        size: .init(width: braceWidth, height: strokeWidth)
+                    ),
+                    role: .delimiter
+                )
+            )
         ]
     }
 
@@ -218,7 +267,7 @@ public struct FormulaRenderPlanBuilder: Sendable {
             return .placeholder
         case .text, .operatorSymbol, .function, .raw, .error:
             return .text
-        case .fraction, .sqrt, .superscript, .subscript, .scriptPair, .parentheses, .absoluteValue:
+        case .fraction, .sqrt, .superscript, .subscript, .scriptPair, .parentheses, .absoluteValue, .parametric2D, .piecewise:
             return .structure
         case .sequence:
             return .node

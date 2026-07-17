@@ -10,6 +10,72 @@ public struct FormulaDisplayParser: Sendable {
 }
 
 private struct ParserState {
+    private static let symbolCommands: [String: String] = [
+        "alpha": "α",
+        "Alpha": "Α",
+        "beta": "β",
+        "Beta": "Β",
+        "gamma": "γ",
+        "Gamma": "Γ",
+        "delta": "δ",
+        "Delta": "Δ",
+        "epsilon": "ε",
+        "Epsilon": "Ε",
+        "zeta": "ζ",
+        "Zeta": "Ζ",
+        "eta": "η",
+        "Eta": "Η",
+        "theta": "θ",
+        "Theta": "Θ",
+        "iota": "ι",
+        "Iota": "Ι",
+        "kappa": "κ",
+        "Kappa": "Κ",
+        "lambda": "λ",
+        "Lambda": "Λ",
+        "mu": "μ",
+        "Mu": "Μ",
+        "nu": "ν",
+        "Nu": "Ν",
+        "xi": "ξ",
+        "Xi": "Ξ",
+        "omicron": "ο",
+        "Omicron": "Ο",
+        "pi": "π",
+        "Pi": "Π",
+        "rho": "ρ",
+        "Rho": "Ρ",
+        "sigma": "σ",
+        "Sigma": "Σ",
+        "tau": "τ",
+        "Tau": "Τ",
+        "upsilon": "υ",
+        "Upsilon": "Υ",
+        "phi": "φ",
+        "Phi": "Φ",
+        "chi": "χ",
+        "Chi": "Χ",
+        "psi": "ψ",
+        "Psi": "Ψ",
+        "omega": "ω",
+        "Omega": "Ω",
+        "infty": "∞",
+        "emptyset": "∅"
+    ]
+
+    private static let operatorCommands: [String: String] = [
+        "times": "×",
+        "div": "÷",
+        "pm": "±",
+        "le": "≤",
+        "leq": "≤",
+        "ge": "≥",
+        "geq": "≥",
+        "neq": "≠",
+        "in": "∈",
+        "notin": "∉"
+    ]
+
     private let characters: [Character]
     private var index: Int = 0
 
@@ -92,6 +158,14 @@ private struct ParserState {
             return .raw(slice(from: start, to: index))
         }
 
+        if let symbol = Self.symbolCommands[name] {
+            return .text(symbol, role: .symbol)
+        }
+
+        if let symbol = Self.operatorCommands[name] {
+            return .operatorSymbol(symbol)
+        }
+
         switch name {
         case "cursor":
             if consumeExact("{}") {
@@ -128,6 +202,26 @@ private struct ParserState {
                 return .function(name: name, arguments: [first, second])
             }
             return .function(name: name, arguments: [first])
+        case "parametric":
+            guard let x = parseFunctionArgument(wrappingParentheses: false),
+                  let y = parseFunctionArgument(wrappingParentheses: false) else {
+                return .error(.init(kind: .unsupportedCommand, rawText: slice(from: start, to: index)))
+            }
+            let range = parseFunctionArgument(wrappingParentheses: false)
+            return .parametric2D(x: x, y: y, range: range)
+        case "piecewise":
+            guard let expr0 = parseFunctionArgument(wrappingParentheses: false),
+                  let cond0 = parseFunctionArgument(wrappingParentheses: false),
+                  let expr1 = parseFunctionArgument(wrappingParentheses: false),
+                  let cond1 = parseFunctionArgument(wrappingParentheses: false) else {
+                return .error(.init(kind: .unsupportedCommand, rawText: slice(from: start, to: index)))
+            }
+            return .piecewise(
+                rows: [
+                    .init(expression: expr0, condition: cond0),
+                    .init(expression: expr1, condition: cond1)
+                ]
+            )
         default:
             consumeUnknownCommandTail()
             return .error(.init(kind: .unknownCommand, rawText: slice(from: start, to: index)))

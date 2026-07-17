@@ -102,6 +102,10 @@ public enum FormulaDisplayProjection {
             return "(\(field(.content, at: 0, in: template, path: path, cursor: cursor)))"
         case .absoluteValue:
             return "|\(field(.content, at: 0, in: template, path: path, cursor: cursor))|"
+        case .piecewise2:
+            return #"\piecewise{\#(field(.rowExpression(0), at: 0, in: template, path: path, cursor: cursor))}{\#(field(.rowCondition(0), at: 1, in: template, path: path, cursor: cursor))}{\#(field(.rowExpression(1), at: 2, in: template, path: path, cursor: cursor))}{\#(field(.rowCondition(1), at: 3, in: template, path: path, cursor: cursor))}"#
+        case .parametric2D:
+            return #"\parametric{\#(field(.parametricExpression(0), at: 0, in: template, path: path, cursor: cursor))}{\#(field(.parametricExpression(1), at: 1, in: template, path: path, cursor: cursor))}{\#(field(.parametricRange, at: 2, in: template, path: path, cursor: cursor))}"#
         }
     }
 
