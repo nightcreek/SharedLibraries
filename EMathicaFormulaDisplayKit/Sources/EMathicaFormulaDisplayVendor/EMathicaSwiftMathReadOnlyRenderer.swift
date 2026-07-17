@@ -127,42 +127,36 @@ package enum SwiftMathReadOnlyRenderer {
             )
         }
 
-        return .success(
-            .init(
-                pngData: pngData,
-                size: image.size,
-                baseline: Double(info?.ascent ?? 0),
-                cursorAnchor: info?.cursor.map {
-                    SwiftMathCursorAnchor(
-                        rect: $0.rect,
-                        x: Double($0.x),
-                        baseline: Double($0.baseline),
-                        ascent: Double($0.ascent),
-                        descent: Double($0.descent),
-                        context: $0.context
-                    )
-                },
-                insertionAnchors: info?.insertionAnchors.map {
-                    SwiftMathInsertionAnchor(
-                        rect: $0.rect,
-                        x: Double($0.x),
-                        baseline: Double($0.baseline),
-                        ascent: Double($0.ascent),
-                        descent: Double($0.descent),
-                        context: $0.context
-                    )
-                } ?? [],
-                placeholderAnchors: info?.placeholders.map {
-                    SwiftMathPlaceholderAnchor(
-                        rect: $0.rect,
-                        baseline: Double($0.baseline),
-                        ascent: Double($0.ascent),
-                        descent: Double($0.descent),
-                        context: $0.context
-                    )
-                } ?? []
+        let snapshotHeight = image.size.height
+
+        let cursorAnchor = info?.cursor.map {
+            normalizedCursorAnchor(
+                info: $0,
+                snapshotHeight: snapshotHeight
             )
+        }
+        let insertionAnchors = info?.insertionAnchors.map {
+            normalizedInsertionAnchor(
+                info: $0,
+                snapshotHeight: snapshotHeight
+            )
+        } ?? []
+        let placeholderAnchors = info?.placeholders.map {
+            normalizedPlaceholderAnchor(
+                info: $0,
+                snapshotHeight: snapshotHeight
+            )
+        } ?? []
+        let renderedImage = SwiftMathRenderedImage(
+            pngData: pngData,
+            size: image.size,
+            baseline: Double(info?.ascent ?? 0),
+            cursorAnchor: cursorAnchor,
+            insertionAnchors: insertionAnchors,
+            placeholderAnchors: placeholderAnchors
         )
+
+        return .success(renderedImage)
     }
 
     private static func mapFont(_ role: SwiftMathFontRole) -> MathFont {
@@ -191,6 +185,60 @@ package enum SwiftMathReadOnlyRenderer {
             green: CGFloat(color.green),
             blue: CGFloat(color.blue),
             alpha: CGFloat(color.alpha)
+        )
+    }
+
+    private static func normalizedRect(_ rect: CGRect, snapshotHeight: CGFloat) -> CGRect {
+        CGRect(
+            x: rect.origin.x,
+            y: snapshotHeight - rect.maxY,
+            width: rect.size.width,
+            height: rect.size.height
+        )
+    }
+
+    private static func normalizedBaseline(_ baseline: CGFloat, snapshotHeight: CGFloat) -> CGFloat {
+        snapshotHeight - baseline
+    }
+
+    private static func normalizedCursorAnchor(
+        info: MathImage.CursorLayoutInfo,
+        snapshotHeight: CGFloat
+    ) -> SwiftMathCursorAnchor {
+        SwiftMathCursorAnchor(
+            rect: normalizedRect(info.rect, snapshotHeight: snapshotHeight),
+            x: Double(info.x),
+            baseline: Double(normalizedBaseline(info.baseline, snapshotHeight: snapshotHeight)),
+            ascent: Double(info.ascent),
+            descent: Double(info.descent),
+            context: info.context
+        )
+    }
+
+    private static func normalizedInsertionAnchor(
+        info: MathImage.InsertionLayoutInfo,
+        snapshotHeight: CGFloat
+    ) -> SwiftMathInsertionAnchor {
+        SwiftMathInsertionAnchor(
+            rect: normalizedRect(info.rect, snapshotHeight: snapshotHeight),
+            x: Double(info.x),
+            baseline: Double(normalizedBaseline(info.baseline, snapshotHeight: snapshotHeight)),
+            ascent: Double(info.ascent),
+            descent: Double(info.descent),
+            context: info.context
+        )
+    }
+
+    private static func normalizedPlaceholderAnchor(
+        info: MathImage.PlaceholderLayoutInfo,
+        snapshotHeight: CGFloat
+    ) -> SwiftMathPlaceholderAnchor {
+        SwiftMathPlaceholderAnchor(
+            rect: normalizedRect(info.rect, snapshotHeight: snapshotHeight),
+            baseline: Double(normalizedBaseline(info.baseline, snapshotHeight: snapshotHeight)),
+            ascent: Double(info.ascent),
+            descent: Double(info.descent),
+            context: info.context
         )
     }
 }

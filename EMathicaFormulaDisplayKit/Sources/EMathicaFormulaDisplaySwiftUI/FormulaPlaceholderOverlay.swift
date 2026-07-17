@@ -37,7 +37,7 @@ struct FormulaPlaceholderOverlay: View {
         let width = max(anchor.rect.size.width, 8)
         return CGRect(
             x: CGFloat(anchor.rect.origin.x),
-            y: CGFloat(anchor.baseline - anchor.descent),
+            y: CGFloat(anchor.rect.origin.y),
             width: CGFloat(width),
             height: CGFloat(minHeight)
         )

@@ -356,15 +356,19 @@ package enum FormulaDisplayContentResolver {
 
     private static func makePlaceholderAnchor(
         token: FormulaDisplayPlaceholderToken,
-        anchor: SwiftMathPlaceholderAnchor
+        anchor: SwiftMathPlaceholderAnchor,
+        verticalOffset: Double = 0
     ) -> FormulaPlaceholderAnchor {
         FormulaPlaceholderAnchor(
             id: token.id,
             rect: .init(
-                origin: .init(x: anchor.rect.origin.x, y: anchor.rect.origin.y),
+                origin: .init(
+                    x: anchor.rect.origin.x,
+                    y: anchor.rect.origin.y + verticalOffset
+                ),
                 size: .init(width: anchor.rect.size.width, height: anchor.rect.size.height)
             ),
-            baseline: anchor.baseline,
+            baseline: anchor.baseline + verticalOffset,
             ascent: anchor.ascent,
             descent: anchor.descent,
             context: mapCursorContext(anchor.context),
@@ -398,7 +402,7 @@ package enum FormulaDisplayContentResolver {
                     foregroundColor: color,
                     displayStyle: .display
                ) {
-                renderAnchors = anchorImage.insertionAnchors
+                renderAnchors = anchorImage.insertionAnchors.isEmpty ? visibleImage.insertionAnchors : anchorImage.insertionAnchors
             } else {
                 renderAnchors = visibleImage.insertionAnchors
             }
@@ -409,7 +413,10 @@ package enum FormulaDisplayContentResolver {
             FormulaInsertionAnchor(
                 id: token.id,
                 rect: .init(
-                    origin: .init(x: anchor.rect.origin.x, y: anchor.rect.origin.y),
+                    origin: .init(
+                        x: anchor.rect.origin.x,
+                        y: anchor.rect.origin.y
+                    ),
                     size: .init(width: anchor.rect.size.width, height: anchor.rect.size.height)
                 ),
                 x: anchor.x,

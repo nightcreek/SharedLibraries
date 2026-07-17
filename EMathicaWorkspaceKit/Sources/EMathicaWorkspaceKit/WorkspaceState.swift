@@ -903,7 +903,15 @@ final class WorkspaceState {
         print("[StructuredInput] action=\(action)")
         print("[StructuredInput] before.cursor.path=\(session.editorState.cursor.path) offset=\(session.editorState.cursor.offset)")
         print("[StructuredInput] before.ast=\n\(session.editorState.root.debugTree)")
-        inputController.handle(action, state: &session.editorState)
+        if let navigationCursor = FormulaCursorNavigationResolver.resolve(
+            action: action,
+            editorState: session.editorState
+        ) {
+            session.editorState.cursor = navigationCursor
+            session.editorState.selection = nil
+        } else {
+            inputController.handle(action, state: &session.editorState)
+        }
         ensureValidCursor(in: &session.editorState)
         print("[StructuredInput] after.cursor.path=\(session.editorState.cursor.path) offset=\(session.editorState.cursor.offset)")
         print("[StructuredInput] after.ast=\n\(session.editorState.root.debugTree)")
