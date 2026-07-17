@@ -90,8 +90,7 @@ final class FormulaKeyboardCoreMarkerTests: XCTestCase {
 
     func testLayoutHintRejectsInvalidWidthWeight() {
         XCTAssertThrowsError(try FormulaKeyLayoutHint(widthWeight: 0))
-        XCTAssertThrowsError(try FormulaKeyLayoutHint(widthWeight: -.leastNonzeroMagnitude))
-        XCTAssertThrowsError(try FormulaKeyLayoutHint(widthWeight: .infinity))
+        XCTAssertThrowsError(try FormulaKeyLayoutHint(widthWeight: -1))
     }
 
     func testDefinitionRejectsEmptyPages() throws {
@@ -204,7 +203,7 @@ final class FormulaKeyboardCoreMarkerTests: XCTestCase {
             id: try FormulaKeyIdentifier(rawValue: "key.sqrt"),
             presentation: .formulaSource(try FormulaKeyboardFormulaSource(latexSource: "\\sqrt{x}")),
             intent: .semanticToken(try FormulaSemanticToken(namespace: "builtin", name: "sqrt")),
-            layoutHint: try FormulaKeyLayoutHint(widthWeight: 1.5)
+            layoutHint: try FormulaKeyLayoutHint(widthWeight: 2)
         )
         let row = try FormulaKeyboardRowDefinition(
             id: FormulaKeyboardRowIdentifier(rawValue: "row.main"),
@@ -228,5 +227,287 @@ final class FormulaKeyboardCoreMarkerTests: XCTestCase {
         let decoded = try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: data)
 
         XCTAssertEqual(decoded, definition)
+    }
+
+    func testDecodedIdentifiersRejectLeadingTrailingAndBlankWhitespace() {
+        let decoder = JSONDecoder()
+
+        XCTAssertNoThrow(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#""leading""#.utf8)))
+        XCTAssertNoThrow(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#""value""#.utf8)))
+        XCTAssertThrowsError(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#"" leading""#.utf8)))
+        XCTAssertThrowsError(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#""trailing ""#.utf8)))
+        XCTAssertThrowsError(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#""   ""#.utf8)))
+        XCTAssertThrowsError(try decoder.decode(FormulaKeyboardIdentifier.self, from: Data(#""\nvalue""#.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsEmptyPages() throws {
+        let json = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": []
+        }
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(json.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsMissingDefaultPage() {
+        let json = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.missing",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.main",
+                  "rows": [
+                    {
+                      "id": "row.main",
+                      "keys": [
+                        {
+                          "id": "key.sqrt",
+                          "presentation": { "text": { "verbatim": "sqrt" } },
+                          "intent": { "semanticToken": { "namespace": "builtin", "name": "sqrt" } },
+                          "layoutHint": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(json.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsDuplicatePageSectionRowAndKeyIdentifiers() {
+        let duplicatePageJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.a",
+                  "rows": [
+                    {
+                      "id": "row.a",
+                      "keys": [
+                        {
+                          "id": "key.a",
+                          "presentation": { "text": { "verbatim": "a" } },
+                          "intent": { "semanticToken": { "namespace": "builtin", "name": "a" } },
+                          "layoutHint": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.b",
+                  "rows": [
+                    {
+                      "id": "row.b",
+                      "keys": [
+                        {
+                          "id": "key.b",
+                          "presentation": { "text": { "verbatim": "b" } },
+                          "intent": { "semanticToken": { "namespace": "builtin", "name": "b" } },
+                          "layoutHint": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        let duplicateSectionJSON = duplicatePageJSON.replacingOccurrences(of: "\"section.b\"", with: "\"section.a\"")
+        let duplicateRowJSON = duplicatePageJSON.replacingOccurrences(of: "\"row.b\"", with: "\"row.a\"")
+        let duplicateKeyJSON = duplicatePageJSON.replacingOccurrences(of: "\"key.b\"", with: "\"key.a\"")
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(duplicatePageJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(duplicateSectionJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(duplicateRowJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(duplicateKeyJSON.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsEmptySectionsRowsAndKeys() {
+        let emptySectionsJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": []
+            }
+          ]
+        }
+        """
+
+        let emptyRowsJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.main",
+                  "rows": []
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        let emptyKeysJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.main",
+                  "rows": [
+                    {
+                      "id": "row.main",
+                      "keys": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(emptySectionsJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(emptyRowsJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(emptyKeysJSON.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsInvalidWidthWeight() {
+        let zeroWidthJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": "Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.main",
+                  "rows": [
+                    {
+                      "id": "row.main",
+                      "keys": [
+                        {
+                          "id": "key.sqrt",
+                          "presentation": { "text": { "verbatim": "sqrt" } },
+                          "intent": { "semanticToken": { "namespace": "builtin", "name": "sqrt" } },
+                          "layoutHint": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        let negativeWidthJSON = zeroWidthJSON.replacingOccurrences(of: "\"layoutHint\": 0", with: "\"layoutHint\": -1")
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(zeroWidthJSON.utf8)))
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(negativeWidthJSON.utf8)))
+    }
+
+    func testDecodedDefinitionRejectsInvalidNestedIdentifiers() {
+        let invalidIdentifierJSON = """
+        {
+          "metadata": {
+            "id": "builtin.standard",
+            "name": " Standard",
+            "version": { "major": 1, "minor": 0, "patch": 0 }
+          },
+          "defaultPageID": "page.main",
+          "pages": [
+            {
+              "id": "page.main",
+              "sections": [
+                {
+                  "id": "section.main",
+                  "rows": [
+                    {
+                      "id": "row.main",
+                      "keys": [
+                        {
+                          "id": "key.sqrt",
+                          "presentation": { "text": { "verbatim": "sqrt" } },
+                          "intent": { "semanticToken": { "namespace": " builtin", "name": "sqrt" } },
+                          "layoutHint": 1
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        XCTAssertThrowsError(try JSONDecoder().decode(FormulaKeyboardDefinition.self, from: Data(invalidIdentifierJSON.utf8)))
     }
 }

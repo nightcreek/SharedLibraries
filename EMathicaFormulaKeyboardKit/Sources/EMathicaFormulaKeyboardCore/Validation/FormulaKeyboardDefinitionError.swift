@@ -10,6 +10,6 @@ public enum FormulaKeyboardDefinitionError: Error, Hashable, Equatable, Codable,
     case duplicateRowIdentifier(FormulaKeyboardRowIdentifier)
     case duplicateKeyIdentifier(FormulaKeyIdentifier)
     case invalidIdentifier(String)
-    case invalidWidthWeight(Double)
+    case invalidWidthWeight(Int)
     case missingDefaultPage(FormulaKeyboardPageIdentifier)
 }
