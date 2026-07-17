@@ -38,3 +38,4 @@ This file is the repository-level entry point required by eMathica third-party g
 - Version anchors use a fixed commit or a fixed release date and package checksum, never a floating branch name.
 - Files derived from SwiftMath keep upstream headers when present and add repository-local provenance headers only where upstream files lacked usable provenance headers.
 - The font files are tracked separately from SwiftMath because their licenses and Reserved Font Name constraints are independent from SwiftMath's MIT source-code license.
+- Local SwiftMath modifications now also include internal cursor atom support and cursor-layout geometry export for editor integration work inside `EMathicaFormulaDisplayKit`.

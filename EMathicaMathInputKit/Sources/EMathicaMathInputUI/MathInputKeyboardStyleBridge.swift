@@ -15,6 +15,7 @@ enum MathInputKeyboardLabelPresentation: Equatable {
     case formulaMarkup(String)
     case systemImage(String)
     case plainText(String)
+    case debugFallback(keyID: String, markup: String, message: String, fallback: String)
 }
 
 enum MathInputKeyboardStyleBridge {
@@ -24,17 +25,12 @@ enum MathInputKeyboardStyleBridge {
         }
 
         switch key.label {
-        case .system:
+        case .systemIcon:
             return .system
-        case .formulaMarkup:
+        case .formula:
             return .template
-        case .text:
-            switch key.intent {
-            case .input(.template), .action(.insertTemplate):
-                return .template
-            default:
-                return .standard
-            }
+        case .symbol, .text:
+            return .standard
         }
     }
 
@@ -249,169 +245,14 @@ enum MathInputKeyboardStyleBridge {
         )
     }
 
-    static func presentation(for label: MathKeyboardKeyLabel) -> MathInputKeyboardLabelPresentation {
-        switch label {
-        case .formulaMarkup(let markup):
+    static func presentation(for key: MathKeyboardKey) -> MathInputKeyboardLabelPresentation {
+        switch key.label {
+        case .formula(let markup, _), .symbol(let markup, _):
             return .formulaMarkup(markup)
-        case .system(let symbol):
-            return systemPresentation(for: symbol)
         case .text(let value):
-            return mathPresentation(for: value)
-        }
-    }
-
-    private static func systemPresentation(for symbol: String) -> MathInputKeyboardLabelPresentation {
-        switch symbol {
-        case "⌫":
-            return .systemImage("delete.left")
-        case "↵":
-            return .systemImage("return.left")
-        case "←":
-            return .systemImage("arrow.left")
-        case "→":
-            return .systemImage("arrow.right")
-        case "↑":
-            return .systemImage("arrow.up")
-        case "↓":
-            return .systemImage("arrow.down")
-        default:
-            return .plainText(symbol)
-        }
-    }
-
-    private static func mathPresentation(for value: String) -> MathInputKeyboardLabelPresentation {
-        switch value {
-        case "sin":
-            return .formulaMarkup(#"\sin{\placeholder{}}"#)
-        case "cos":
-            return .formulaMarkup(#"\cos{\placeholder{}}"#)
-        case "tan":
-            return .formulaMarkup(#"\tan{\placeholder{}}"#)
-        case "ln":
-            return .formulaMarkup(#"\ln{\placeholder{}}"#)
-        case "log":
-            return .formulaMarkup(#"\log{\placeholder{}}"#)
-        case "exp":
-            return .formulaMarkup(#"exp(\placeholder{})"#)
-        case "α":
-            return .formulaMarkup(#"\alpha"#)
-        case "Α":
-            return .formulaMarkup(#"\Alpha"#)
-        case "β":
-            return .formulaMarkup(#"\beta"#)
-        case "Β":
-            return .formulaMarkup(#"\Beta"#)
-        case "γ":
-            return .formulaMarkup(#"\gamma"#)
-        case "Γ":
-            return .formulaMarkup(#"\Gamma"#)
-        case "δ":
-            return .formulaMarkup(#"\delta"#)
-        case "Δ":
-            return .formulaMarkup(#"\Delta"#)
-        case "ε":
-            return .formulaMarkup(#"\epsilon"#)
-        case "Ε":
-            return .formulaMarkup(#"\Epsilon"#)
-        case "ζ":
-            return .formulaMarkup(#"\zeta"#)
-        case "Ζ":
-            return .formulaMarkup(#"\Zeta"#)
-        case "η":
-            return .formulaMarkup(#"\eta"#)
-        case "Η":
-            return .formulaMarkup(#"\Eta"#)
-        case "θ":
-            return .formulaMarkup(#"\theta"#)
-        case "Θ":
-            return .formulaMarkup(#"\Theta"#)
-        case "ι":
-            return .formulaMarkup(#"\iota"#)
-        case "Ι":
-            return .formulaMarkup(#"\Iota"#)
-        case "κ":
-            return .formulaMarkup(#"\kappa"#)
-        case "Κ":
-            return .formulaMarkup(#"\Kappa"#)
-        case "λ":
-            return .formulaMarkup(#"\lambda"#)
-        case "Λ":
-            return .formulaMarkup(#"\Lambda"#)
-        case "μ":
-            return .formulaMarkup(#"\mu"#)
-        case "Μ":
-            return .formulaMarkup(#"\Mu"#)
-        case "ν":
-            return .formulaMarkup(#"\nu"#)
-        case "Ν":
-            return .formulaMarkup(#"\Nu"#)
-        case "ξ":
-            return .formulaMarkup(#"\xi"#)
-        case "Ξ":
-            return .formulaMarkup(#"\Xi"#)
-        case "ο":
-            return .formulaMarkup(#"\omicron"#)
-        case "Ο":
-            return .formulaMarkup(#"\Omicron"#)
-        case "π":
-            return .formulaMarkup(#"\pi"#)
-        case "Π":
-            return .formulaMarkup(#"\Pi"#)
-        case "ρ":
-            return .formulaMarkup(#"\rho"#)
-        case "Ρ":
-            return .formulaMarkup(#"\Rho"#)
-        case "σ":
-            return .formulaMarkup(#"\sigma"#)
-        case "Σ":
-            return .formulaMarkup(#"\Sigma"#)
-        case "τ":
-            return .formulaMarkup(#"\tau"#)
-        case "Τ":
-            return .formulaMarkup(#"\Tau"#)
-        case "υ":
-            return .formulaMarkup(#"\upsilon"#)
-        case "Υ":
-            return .formulaMarkup(#"\Upsilon"#)
-        case "φ":
-            return .formulaMarkup(#"\phi"#)
-        case "Φ":
-            return .formulaMarkup(#"\Phi"#)
-        case "χ":
-            return .formulaMarkup(#"\chi"#)
-        case "Χ":
-            return .formulaMarkup(#"\Chi"#)
-        case "ψ":
-            return .formulaMarkup(#"\psi"#)
-        case "Ψ":
-            return .formulaMarkup(#"\Psi"#)
-        case "ω":
-            return .formulaMarkup(#"\omega"#)
-        case "Ω":
-            return .formulaMarkup(#"\Omega"#)
-        case "∞":
-            return .formulaMarkup(#"\infty"#)
-        case "∈":
-            return .formulaMarkup(#"\in"#)
-        case "∉":
-            return .formulaMarkup(#"\notin"#)
-        case "∅":
-            return .formulaMarkup(#"\emptyset"#)
-        case "×":
-            return .formulaMarkup(#"\times"#)
-        case "÷":
-            return .formulaMarkup(#"\div"#)
-        case "≤":
-            return .formulaMarkup(#"\leq"#)
-        case "≥":
-            return .formulaMarkup(#"\geq"#)
-        case "≠":
-            return .formulaMarkup(#"\neq"#)
-        default:
-            if value.range(of: #"^[A-Za-z0-9+\-=/<>\[\]\(\)\{\}\.,|]+$"#, options: .regularExpression) != nil {
-                return .formulaMarkup(value)
-            }
             return .plainText(value)
+        case .systemIcon(let systemName):
+            return .systemImage(systemName)
         }
     }
 

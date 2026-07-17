@@ -137,7 +137,7 @@ private struct ParserState {
             primary = parseAbsoluteValue()
         case "□":
             advance()
-            primary = .placeholder
+            primary = .anonymousPlaceholder
         default:
             primary = parseTextualPrimary()
         }
@@ -169,12 +169,12 @@ private struct ParserState {
         switch name {
         case "cursor":
             if consumeExact("{}") {
-                return .cursor
+                return .anonymousCursor
             }
             return .error(.init(kind: .unsupportedCommand, rawText: slice(from: start, to: index)))
         case "placeholder":
             if consumeExact("{}") {
-                return .placeholder
+                return .anonymousPlaceholder
             }
             return .error(.init(kind: .unsupportedCommand, rawText: slice(from: start, to: index)))
         case "frac":

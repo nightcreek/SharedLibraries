@@ -49,7 +49,7 @@ func getInterElementSpaces() -> [[InterElementSpaceType]] {
 // Get's the index for the given type. If row is true, the index is for the row (i.e. left element) otherwise it is for the column (right element)
 func getInterElementSpaceArrayIndexForType(_ type:MTMathAtomType, row:Bool) -> Int {
     switch type {
-        case .color, .textcolor, .colorBox, .ordinary, .placeholder:   // A placeholder is treated as ordinary
+        case .color, .textcolor, .colorBox, .ordinary, .placeholder, .cursor:   // Cursor/placeholder are treated as ordinary
             return 0
         case .largeOperator:
             return 1

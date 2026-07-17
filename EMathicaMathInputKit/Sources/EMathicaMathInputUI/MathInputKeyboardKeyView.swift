@@ -19,7 +19,7 @@ struct MathInputKeyboardKeyView: View {
             action(key)
         } label: {
             MathInputKeyboardLabelView(
-                label: key.label,
+                key: key,
                 style: style,
                 visualRole: visualRole
             )

@@ -33,19 +33,30 @@ private struct MathEditorHitRegionPreferenceKey: PreferenceKey {
 public struct FormulaEditorView: View {
     public var editorState: EditorState
     public var isFocused: Bool
+    public var usesInternalScrollView: Bool
+    public var interactionOverlayOnly: Bool
     public var onTapCursor: (EditorCursor) -> Void
     public var onKeyboardAction: (KeyboardAction) -> Void
     @State private var hitRegions: [MathEditorHitRegion] = []
 
+    public init(
+        editorState: EditorState,
+        isFocused: Bool,
+        usesInternalScrollView: Bool = true,
+        interactionOverlayOnly: Bool = false,
+        onTapCursor: @escaping (EditorCursor) -> Void,
+        onKeyboardAction: @escaping (KeyboardAction) -> Void
+    ) {
+        self.editorState = editorState
+        self.isFocused = isFocused
+        self.usesInternalScrollView = usesInternalScrollView
+        self.interactionOverlayOnly = interactionOverlayOnly
+        self.onTapCursor = onTapCursor
+        self.onKeyboardAction = onKeyboardAction
+    }
+
     public var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 2) {
-                renderNode(editorState.root, path: [])
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
-        }
+        containerBody
         .coordinateSpace(name: "FormulaEditorSpace")
         .contentShape(Rectangle())
         .onPreferenceChange(MathEditorHitRegionPreferenceKey.self) { regions in
@@ -68,6 +79,27 @@ public struct FormulaEditorView: View {
             .allowsHitTesting(false)
         )
 #endif
+        .modifier(FormulaEditorVisibilityModifier(isInteractionOverlayOnly: interactionOverlayOnly))
+    }
+
+    @ViewBuilder
+    private var containerBody: some View {
+        if usesInternalScrollView {
+            ScrollView(.horizontal, showsIndicators: false) {
+                contentBody
+            }
+        } else {
+            contentBody
+        }
+    }
+
+    private var contentBody: some View {
+        HStack(spacing: 2) {
+            renderNode(editorState.root, path: [])
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
     }
 
     public static func piecewiseBraceHeight(rows: Int) -> CGFloat {
@@ -710,6 +742,18 @@ public struct FormulaEditorView: View {
                 }
             }
             .font(.system(size: 20, weight: .medium, design: .serif))
+        }
+    }
+}
+
+private struct FormulaEditorVisibilityModifier: ViewModifier {
+    let isInteractionOverlayOnly: Bool
+
+    func body(content: Content) -> some View {
+        if isInteractionOverlayOnly {
+            content.hidden()
+        } else {
+            content
         }
     }
 }

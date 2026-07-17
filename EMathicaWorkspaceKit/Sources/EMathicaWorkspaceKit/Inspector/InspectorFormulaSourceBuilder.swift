@@ -50,6 +50,7 @@ enum InspectorFormulaSourceBuilder {
         let objectSource = WorkspaceObjectFormulaSource.make(for: object)
         return .init(
             surface: .inspector,
+            document: objectSource.document,
             rawValue: objectSource.rawValue,
             fallbackText: objectSource.fallbackText,
             fontSize: 13,

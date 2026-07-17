@@ -73,23 +73,38 @@ public struct FormulaDisplayDiagnostics: Equatable, Sendable {
             diagnostics.swiftMathAttemptCount += 1
         }
 
-        let resolved = FormulaReadOnlyDisplayResolver.resolveUncached(
-            surface: source.surface,
-            rawValue: source.rawValue,
-            fallbackText: source.fallbackText,
-            fontSize: source.fontSize,
-            minHeight: source.minHeight,
-            allowsMultiline: source.allowsMultiline,
-            configuration: configuration
-        )
+        let resolved: FormulaReadOnlyDisplayResolvedMode
+        if let document = source.document {
+            resolved = FormulaReadOnlyDisplayResolver.resolveUncached(
+                surface: source.surface,
+                document: document,
+                rawValue: source.rawValue,
+                fallbackText: source.fallbackText,
+                fontSize: source.fontSize,
+                minHeight: source.minHeight,
+                allowsMultiline: source.allowsMultiline,
+                configuration: configuration
+            )
+        } else {
+            resolved = FormulaReadOnlyDisplayResolver.resolveUncached(
+                surface: source.surface,
+                rawValue: source.rawValue,
+                fallbackText: source.fallbackText,
+                fontSize: source.fontSize,
+                minHeight: source.minHeight,
+                allowsMultiline: source.allowsMultiline,
+                configuration: configuration
+            )
+        }
 
         switch resolved {
-        case .formula(_, let options, let fallbackReason):
+        case .formula(_, _, let options, let fallbackReason):
             guard let fallbackReason else { return }
             diagnostics.lastFallbackReason = fallbackReason
-            if configuration.backend == .swiftMath, options.renderingBackend == .legacy {
+            if configuration.backend == .swiftMath {
                 diagnostics.swiftMathFallbackCount += 1
-            } else if options.renderingBackend == .legacy {
+            }
+            if options.renderingBackend == .legacy {
                 diagnostics.legacyFallbackCount += 1
             }
         case .plainText(_, let fallbackReason):

@@ -137,23 +137,89 @@ private extension MathInputKeyboardSurfaceModel {
 
     static let greekLowercaseRows: [MathKeyboardRow] = keyboardRows(
         [
-            greekKeys(commands: ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa"], uppercase: false),
-            greekKeys(commands: ["lambda", "mu", "nu", "xi", "omicron", "pi", "rho", "sigma", "tau"], uppercase: false),
+            greekKeys(entries: lowercaseGreekEntries),
+            greekKeys(entries: lowercaseGreekEntriesSecondRow),
             [caseToggleKey(for: .lowercase)] +
-                greekKeys(commands: ["upsilon", "phi", "chi", "psi", "omega"], uppercase: false) +
+                greekKeys(entries: lowercaseGreekEntriesThirdRow) +
                 [scriptToggleKey(for: .greek)]
         ]
     )
 
     static let greekUppercaseRows: [MathKeyboardRow] = keyboardRows(
         [
-            greekKeys(commands: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa"], uppercase: true),
-            greekKeys(commands: ["Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau"], uppercase: true),
+            greekKeys(entries: uppercaseGreekEntries),
+            greekKeys(entries: uppercaseGreekEntriesSecondRow),
             [caseToggleKey(for: .uppercase)] +
-                greekKeys(commands: ["Upsilon", "Phi", "Chi", "Psi", "Omega"], uppercase: true) +
+                greekKeys(entries: uppercaseGreekEntriesThirdRow) +
                 [scriptToggleKey(for: .greek)]
         ]
     )
+
+    static let lowercaseGreekEntries: [GreekKeyEntry] = [
+        .symbol(command: "alpha", fallback: "α"),
+        .symbol(command: "beta", fallback: "β"),
+        .symbol(command: "gamma", fallback: "γ"),
+        .symbol(command: "delta", fallback: "δ"),
+        .symbol(command: "epsilon", fallback: "ε"),
+        .symbol(command: "zeta", fallback: "ζ"),
+        .symbol(command: "eta", fallback: "η"),
+        .symbol(command: "theta", fallback: "θ"),
+        .symbol(command: "iota", fallback: "ι"),
+        .symbol(command: "kappa", fallback: "κ")
+    ]
+
+    static let lowercaseGreekEntriesSecondRow: [GreekKeyEntry] = [
+        .symbol(command: "lambda", fallback: "λ"),
+        .symbol(command: "mu", fallback: "μ"),
+        .symbol(command: "nu", fallback: "ν"),
+        .symbol(command: "xi", fallback: "ξ"),
+        .symbol(command: "omicron", fallback: "ο"),
+        .symbol(command: "pi", fallback: "π"),
+        .symbol(command: "rho", fallback: "ρ"),
+        .symbol(command: "sigma", fallback: "σ"),
+        .symbol(command: "tau", fallback: "τ")
+    ]
+
+    static let lowercaseGreekEntriesThirdRow: [GreekKeyEntry] = [
+        .symbol(command: "upsilon", fallback: "υ"),
+        .symbol(command: "phi", fallback: "φ"),
+        .symbol(command: "chi", fallback: "χ"),
+        .symbol(command: "psi", fallback: "ψ"),
+        .symbol(command: "omega", fallback: "ω")
+    ]
+
+    static let uppercaseGreekEntries: [GreekKeyEntry] = [
+        .sharedGlyph(markup: "A", fallback: "A"),
+        .sharedGlyph(markup: "B", fallback: "B"),
+        .symbol(command: "Gamma", fallback: "Γ"),
+        .symbol(command: "Delta", fallback: "Δ"),
+        .sharedGlyph(markup: "E", fallback: "E"),
+        .sharedGlyph(markup: "Z", fallback: "Z"),
+        .sharedGlyph(markup: "H", fallback: "H"),
+        .symbol(command: "Theta", fallback: "Θ"),
+        .sharedGlyph(markup: "I", fallback: "I"),
+        .sharedGlyph(markup: "K", fallback: "K")
+    ]
+
+    static let uppercaseGreekEntriesSecondRow: [GreekKeyEntry] = [
+        .symbol(command: "Lambda", fallback: "Λ"),
+        .sharedGlyph(markup: "M", fallback: "M"),
+        .sharedGlyph(markup: "N", fallback: "N"),
+        .symbol(command: "Xi", fallback: "Ξ"),
+        .sharedGlyph(markup: "O", fallback: "O"),
+        .symbol(command: "Pi", fallback: "Π"),
+        .sharedGlyph(markup: "P", fallback: "P"),
+        .symbol(command: "Sigma", fallback: "Σ"),
+        .sharedGlyph(markup: "T", fallback: "T")
+    ]
+
+    static let uppercaseGreekEntriesThirdRow: [GreekKeyEntry] = [
+        .sharedGlyph(markup: "Y", fallback: "Y"),
+        .symbol(command: "Phi", fallback: "Φ"),
+        .sharedGlyph(markup: "X", fallback: "X"),
+        .symbol(command: "Psi", fallback: "Ψ"),
+        .symbol(command: "Omega", fallback: "Ω")
+    ]
 
     static func keyboardRows(_ rows: [[MathKeyboardKey]]) -> [MathKeyboardRow] {
         rows.map(MathKeyboardRow.init(keys:))
@@ -163,20 +229,20 @@ private extension MathInputKeyboardSurfaceModel {
         values.map { value in
             MathKeyboardKey(
                 id: "alphabet-latin-\(uppercase ? "upper" : "lower")-\(value)",
-                label: .formulaMarkup(value),
+                label: .symbol(markup: literalMathMarkup(for: value), fallback: value),
                 intent: .input(.char(value)),
                 accessibilityLabel: value
             )
         }
     }
 
-    static func greekKeys(commands: [String], uppercase: Bool) -> [MathKeyboardKey] {
-        commands.map { command in
+    static func greekKeys(entries: [GreekKeyEntry]) -> [MathKeyboardKey] {
+        entries.map { entry in
             MathKeyboardKey(
-                id: "alphabet-greek-\(uppercase ? "upper" : "lower")-\(command)",
-                label: .formulaMarkup("\\\(command)"),
-                intent: .action(.insertSymbol("\\\(command)")),
-                accessibilityLabel: command
+                id: "alphabet-greek-\(entry.identifier)",
+                label: .symbol(markup: entry.markup, fallback: entry.fallback),
+                intent: entry.intent,
+                accessibilityLabel: entry.accessibilityLabel
             )
         }
     }
@@ -184,7 +250,7 @@ private extension MathInputKeyboardSurfaceModel {
     static func caseToggleKey(for letterCase: MathKeyboardLetterCase) -> MathKeyboardKey {
         MathKeyboardKey(
             id: caseToggleKeyID,
-            label: .formulaMarkup("Aa"),
+            label: .formula(markup: "A/a", fallback: "A/a"),
             intent: .none,
             size: .wide,
             accessibilityLabel: "切换大小写"
@@ -194,7 +260,7 @@ private extension MathInputKeyboardSurfaceModel {
     static func scriptToggleKey(for script: MathKeyboardAlphabetScript) -> MathKeyboardKey {
         MathKeyboardKey(
             id: scriptToggleKeyID,
-            label: .formulaMarkup(script == .latin ? #"a/\alpha"# : #"a/\alpha"#),
+            label: .formula(markup: #"a/\alpha"#, fallback: "a/α"),
             intent: .none,
             size: .wide,
             accessibilityLabel: "切换字母脚本"
@@ -204,7 +270,7 @@ private extension MathInputKeyboardSurfaceModel {
     static func charKey(id: String, displayMarkup: String, input: String) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .formulaMarkup(displayMarkup),
+            label: .symbol(markup: literalMathMarkup(for: displayMarkup), fallback: input),
             intent: .input(.char(input)),
             accessibilityLabel: input
         )
@@ -219,10 +285,70 @@ private extension MathInputKeyboardSurfaceModel {
     ) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .system(symbol),
+            label: .systemIcon(systemIconName(for: symbol)),
             intent: .action(action),
             size: accent ? .wide : .normal,
             accessibilityLabel: accessibilityLabel
         )
+    }
+
+    static func literalMathMarkup(for literal: String) -> String {
+        switch literal {
+        case "{":
+            return #"\{"#
+        case "}":
+            return #"\}"#
+        default:
+            return literal
+        }
+    }
+
+    static func systemIconName(for symbol: String) -> String {
+        switch symbol {
+        case "⌫":
+            return "delete.left"
+        case "↵":
+            return "return.left"
+        case "←":
+            return "arrow.left"
+        case "→":
+            return "arrow.right"
+        case "↑":
+            return "arrow.up"
+        case "↓":
+            return "arrow.down"
+        default:
+            return symbol
+        }
+    }
+}
+
+private extension MathInputKeyboardSurfaceModel {
+    struct GreekKeyEntry: Equatable {
+        let identifier: String
+        let markup: String
+        let fallback: String
+        let intent: MathKeyboardIntent
+        let accessibilityLabel: String
+
+        static func symbol(command: String, fallback: String) -> GreekKeyEntry {
+            GreekKeyEntry(
+                identifier: command.lowercased(),
+                markup: "\\\(command)",
+                fallback: fallback,
+                intent: .action(.insertSymbol("\\\(command)")),
+                accessibilityLabel: fallback
+            )
+        }
+
+        static func sharedGlyph(markup: String, fallback: String) -> GreekKeyEntry {
+            GreekKeyEntry(
+                identifier: "shared-\(fallback)",
+                markup: markup,
+                fallback: fallback,
+                intent: .input(.char(fallback)),
+                accessibilityLabel: fallback
+            )
+        }
     }
 }

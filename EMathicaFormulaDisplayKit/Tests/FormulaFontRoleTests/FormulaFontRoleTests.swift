@@ -2,8 +2,8 @@ import XCTest
 @testable import EMathicaFormulaDisplayCore
 
 final class FormulaFontRoleTests: XCTestCase {
-    func testDefaultRenderingConfigurationPrefersLegacyAndStandardFontRole() {
-        XCTAssertEqual(FormulaDisplayOptions.default.renderingBackend, .legacy)
+    func testDefaultRenderingConfigurationPrefersSwiftMathAndStandardFontRole() {
+        XCTAssertEqual(FormulaDisplayOptions.default.renderingBackend, .swiftMath)
         XCTAssertEqual(FormulaDisplayOptions.default.fontRole, .standard)
     }
 

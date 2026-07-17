@@ -7,12 +7,12 @@ import XCTest
 
 @MainActor
 final class EditorPreviewFormulaBackendTests: XCTestCase {
-    func testEditorPreviewDefaultsToLegacyBackend() {
+    func testEditorPreviewDefaultsToSwiftMathBackend() {
         let state = makeState(markup: #"x^2"#)
-        XCTAssertEqual(state.effectiveReadOnlyFormulaDisplayConfiguration.backend, .legacy)
+        XCTAssertEqual(state.effectiveReadOnlyFormulaDisplayConfiguration.backend, .swiftMath)
     }
 
-    func testEditorPreviewSwiftMathOverrideFallsBackToLegacyForUnsupportedMarkup() {
+    func testEditorPreviewUnsupportedSwiftMathMarkupProducesDiagnosticFallbackReason() {
         let resolved = FormulaReadOnlyDisplayResolver.resolveUncached(
             surface: .editorPreview,
             rawValue: #"\mathscr{L}"#,
@@ -23,11 +23,11 @@ final class EditorPreviewFormulaBackendTests: XCTestCase {
             configuration: .init(backend: .swiftMath, fontRole: .standard)
         )
 
-        guard case .formula(_, let options, let fallbackReason) = resolved else {
-            return XCTFail("Expected legacy formula fallback, not plain text")
+        guard case .formula(_, _, let options, let fallbackReason) = resolved else {
+            return XCTFail("Expected SwiftMath diagnostic formula resolution")
         }
 
-        XCTAssertEqual(options.renderingBackend, .legacy)
+        XCTAssertEqual(options.renderingBackend, .swiftMath)
         XCTAssertEqual(fallbackReason, .unsupportedCommand)
     }
 

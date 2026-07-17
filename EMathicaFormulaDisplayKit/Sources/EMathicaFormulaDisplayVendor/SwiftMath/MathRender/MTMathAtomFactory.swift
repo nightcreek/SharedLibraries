@@ -541,6 +541,7 @@ public class MTMathAtomFactory {
         // Spacing
         "," : MTMathSpace(space: 3),
         ">" : MTMathSpace(space: 4),
+        ":" : MTMathSpace(space: 4),
         ";" : MTMathSpace(space: 5),
         "!" : MTMathSpace(space: -3),
         "quad" : MTMathSpace(space: 18),  // quad = 1em = 18mu
@@ -696,7 +697,13 @@ public class MTMathAtomFactory {
     
     /// Returns an atom which is a placeholder square
     public static func placeholder() -> MTMathAtom {
-        MTMathAtom(type: .placeholder, value: UnicodeSymbol.whiteSquare)
+        MTPlaceholderAtom()
+    }
+
+    public static func cursor(spacingKind: MTEditorSpacingKind = .mediumSpace) -> MTCursorAtom {
+        let atom = MTCursorAtom()
+        atom.spacingKind = spacingKind
+        return atom
     }
     
     /** Returns a fraction with a placeholder for the numerator and denominator */

@@ -688,6 +688,8 @@ public struct MTMathListBuilder {
                     if let accent = atom as? MTAccent {
                         str += "\\\(MTMathAtomFactory.accentName(accent)!){\(mathListToString(accent.innerList!))}"
                     }
+                } else if atom.type == .cursor {
+                    str += "\\cursor{}"
                 } else if atom.type == .largeOperator {
                     let op = atom as! MTLargeOperator
                     let command = MTMathAtomFactory.latexSymbolName(for: atom)
@@ -910,6 +912,15 @@ public struct MTMathListBuilder {
                 rad.radicand = self.buildInternal(true)
             }
             return rad;
+        } else if command == "cursor" || command == "emcursor" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .mediumSpace)
+        } else if command == "emcursorthick" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .thickSpace)
+        } else if command == "emplaceholder" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.placeholder()
         } else if command == "left" {
             // Save the current inner while a new one gets built.
             let oldInner = currentInnerAtom
@@ -1245,6 +1256,15 @@ public struct MTMathListBuilder {
         if let accent = MTMathAtomFactory.accent(withName: command) {
             accent.innerList = self.buildInternal(true)
             return accent
+        } else if command == "cursor" || command == "emcursor" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .mediumSpace)
+        } else if command == "emcursorthick" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .thickSpace)
+        } else if command == "emplaceholder" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.placeholder()
         } else if command == "frac" {
             let frac = MTFraction()
             frac.numerator = self.buildInternal(true)
@@ -1433,6 +1453,20 @@ public struct MTMathListBuilder {
             return nil
         }
     }
+
+    mutating func consumeOptionalEmptyGroup() {
+        skipSpaces()
+        guard hasCharacters, string[currentCharIndex] == "{" else {
+            return
+        }
+        _ = getNextCharacter()
+        skipSpaces()
+        guard hasCharacters, string[currentCharIndex] == "}" else {
+            setError(.mismatchBraces, message: "Expected empty group for internal command.")
+            return
+        }
+        _ = getNextCharacter()
+    }
     
     mutating func readEnvironment() -> String? {
         if !self.expectCharacter("{") {
@@ -1584,7 +1618,7 @@ public struct MTMathListBuilder {
     }
     
     mutating func readCommand() -> String {
-        let singleChars = "{}$#%_| ,>;!\\"
+        let singleChars = "{}$#%_| ,>:;!\\"
         if self.hasCharacters {
             let char = self.getNextCharacter()
             if let _ = singleChars.firstIndex(of: char)  {

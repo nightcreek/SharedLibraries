@@ -27,12 +27,61 @@ public enum FormulaReadOnlyRenderProbeResult: Sendable, Equatable {
 
 public enum FormulaReadOnlyRenderProbe {
     public static func measure(
+        document: FormulaDisplayDocument,
+        options: FormulaDisplayOptions = .default,
+        metrics: FormulaLayoutMetrics = .default
+    ) -> FormulaReadOnlyRenderProbeResult {
+        guard !FormulaDisplayContentInspector.isEffectivelyEmpty(document) else {
+            return .failure(.emptyOutput, message: "Formula document is empty.")
+        }
+
+        switch options.renderingBackend {
+        case .legacy:
+            let plan = FormulaDisplayEngine(options: options, metrics: metrics)
+                .getPlan(from: .init(rawValue: FormulaDisplayDocumentSerializer.serialize(document)))
+            let width = Double(plan.bounds.size.width)
+            let height = Double(plan.bounds.size.height)
+            let baseline = Double(plan.baseline)
+            guard width.isFinite, height.isFinite, baseline.isFinite, width > 0, height > 0 else {
+                return .failure(.invalidIntrinsicSize, message: "Legacy formula renderer produced an invalid size.")
+            }
+            return .success(.init(width: width, height: height, baseline: baseline))
+        case .swiftMath:
+            let resolved = FormulaDisplayContentResolver.resolve(
+                document: document,
+                options: options,
+                metrics: metrics,
+                foregroundColor: .init(red: 0, green: 0, blue: 0, alpha: 1)
+            )
+            switch resolved {
+            case .swiftMath(let snapshot):
+                let width = snapshot.size.width
+                let height = snapshot.size.height
+                let baseline = snapshot.baseline
+                guard width.isFinite, height.isFinite, baseline.isFinite, width > 0, height > 0 else {
+                    return .failure(.invalidIntrinsicSize, message: "SwiftMath produced an invalid intrinsic size.")
+                }
+                return .success(.init(width: width, height: height, baseline: baseline))
+            case .swiftMathError(let error):
+                return .failure(mapFallbackReason(error), message: error.message)
+            case .legacy(let plan):
+                let width = Double(plan.bounds.size.width)
+                let height = Double(plan.bounds.size.height)
+                let baseline = Double(plan.baseline)
+                guard width.isFinite, height.isFinite, baseline.isFinite, width > 0, height > 0 else {
+                    return .failure(.invalidIntrinsicSize, message: "Legacy formula renderer produced an invalid size.")
+                }
+                return .success(.init(width: width, height: height, baseline: baseline))
+            }
+        }
+    }
+
+    public static func measure(
         markup: FormulaDisplayMarkup,
         options: FormulaDisplayOptions = .default,
         metrics: FormulaLayoutMetrics = .default
     ) -> FormulaReadOnlyRenderProbeResult {
-        let trimmed = markup.rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard !FormulaDisplayContentInspector.isEffectivelyEmpty(markup) else {
             return .failure(.emptyOutput, message: "Formula markup is empty.")
         }
 

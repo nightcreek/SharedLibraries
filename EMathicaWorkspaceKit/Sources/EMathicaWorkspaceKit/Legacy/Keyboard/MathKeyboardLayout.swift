@@ -1,5 +1,6 @@
 import EMathicaMathInputCore
 
+@available(*, deprecated, message: "Use MathInputKeyboardView and MathInputKeyboardSurfaceModel instead.")
 public enum MathKeyboardTab: String, CaseIterable, Identifiable {
     case numbers
     case functions

@@ -3,6 +3,7 @@ import EMathicaMathInputCore
 import EMathicaThemeKit
 import SwiftUI
 
+@available(*, deprecated, message: "Use MathInputKeyboardView as the production keyboard surface.")
 public struct MathKeyboardView: View {
     @Environment(\.colorScheme) private var colorScheme
 

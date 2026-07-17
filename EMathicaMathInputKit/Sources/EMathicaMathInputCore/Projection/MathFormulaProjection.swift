@@ -115,77 +115,45 @@ public enum MathFormulaProjection {
     private static func projectTemplate(_ template: TemplateNode) -> MathFormula {
         switch template.kind {
         case .fraction:
-            return .template(
-                MathTemplateFormula(
-                    kind: .fraction,
-                    fields: [
-                        projectField(template.field(.numerator)),
-                        projectField(template.field(.denominator))
-                    ]
-                )
-            )
+            return templateFormula(.fraction, fields: [.numerator, .denominator], template: template)
         case .sqrt:
-            return .template(
-                MathTemplateFormula(
-                    kind: .sqrt,
-                    fields: [
-                        projectField(template.field(.radicand))
-                    ]
-                )
-            )
+            return templateFormula(.sqrt, fields: [.radicand], template: template)
+        case .nthRoot:
+            return templateFormula(.nthRoot, fields: [.rootIndex, .radicand], template: template)
         case .superscript:
-            return .template(
-                MathTemplateFormula(
-                    kind: .superscript,
-                    fields: [
-                        projectField(template.field(.base)),
-                        projectField(template.field(.exponent))
-                    ]
-                )
-            )
+            return templateFormula(.superscript, fields: [.base, .exponent], template: template)
         case .subscriptTemplate:
-            return .template(
-                MathTemplateFormula(
-                    kind: .subscript,
-                    fields: [
-                        projectField(template.field(.base)),
-                        projectField(template.field(.subscriptField))
-                    ]
-                )
-            )
+            return templateFormula(.subscript, fields: [.base, .subscriptField], template: template)
+        case .subscriptSuperscript:
+            return templateFormula(.subscriptSuperscript, fields: [.base, .subscriptField, .exponent], template: template)
         case .parentheses:
-            return .template(
-                MathTemplateFormula(
-                    kind: .parentheses,
-                    fields: [
-                        projectField(template.field(.content))
-                    ]
-                )
-            )
+            return templateFormula(.parentheses, fields: [.content], template: template)
+        case .brackets:
+            return templateFormula(.brackets, fields: [.content], template: template)
+        case .braces:
+            return templateFormula(.braces, fields: [.content], template: template)
         case .absoluteValue:
+            return templateFormula(.absoluteValue, fields: [.content], template: template)
+        case .vector:
+            return templateFormula(.vector, fields: [.content], template: template)
+        case .overline:
+            return templateFormula(.overline, fields: [.content], template: template)
+        case .hat:
+            return templateFormula(.hat, fields: [.content], template: template)
+        case .piecewise(let rows):
             return .template(
                 MathTemplateFormula(
-                    kind: .absoluteValue,
-                    fields: [
-                        projectField(template.field(.content))
-                    ]
+                    kind: .piecewise(rows: rows),
+                    fields: piecewiseFields(rows: rows, template: template)
                 )
             )
-        case .piecewise(let rows):
-            if rows == 2 {
-                return .template(
-                    MathTemplateFormula(
-                        kind: .piecewise2,
-                        fields: [
-                            projectField(template.field(.rowExpression(0))),
-                            projectField(template.field(.rowCondition(0))),
-                            projectField(template.field(.rowExpression(1))),
-                            projectField(template.field(.rowCondition(1)))
-                        ]
-                    )
+        case .cases(let rows):
+            return .template(
+                MathTemplateFormula(
+                    kind: .cases(rows: rows),
+                    fields: (0..<rows).map { projectField(template.field(.rowExpression($0))) }
                 )
-            }
-            return fallbackRawLatex(for: template)
+            )
         case .parametricEquation2D:
             return .template(
                 MathTemplateFormula(
@@ -194,6 +162,17 @@ public enum MathFormulaProjection {
                         projectField(template.field(.parametricExpression(0))),
                         projectField(template.field(.parametricExpression(1))),
                         projectField(template.field(.parametricRange))
+                    ]
+                )
+            )
+        case .parametricEquation3D:
+            return .template(
+                MathTemplateFormula(
+                    kind: .parametric3D,
+                    fields: [
+                        projectField(template.field(.parametricExpression(0))),
+                        projectField(template.field(.parametricExpression(1))),
+                        projectField(template.field(.parametricExpression(2)))
                     ]
                 )
             )
@@ -214,21 +193,24 @@ public enum MathFormulaProjection {
                     arguments: arguments
                 )
             )
-        case .nthRoot,
-             .subscriptSuperscript,
-             .brackets,
-             .braces,
-             .vector,
-             .overline,
-             .hat,
-             .limit,
-             .sum,
-             .product,
-             .integral,
-             .matrix,
-             .cases,
-             .parametricEquation3D:
-            return fallbackRawLatex(for: template)
+        case .limit:
+            return templateFormula(.limit, fields: [.variable, .target, .expression], template: template)
+        case .sum:
+            return templateFormula(.sum, fields: [.variable, .lowerBound, .upperBound, .expression], template: template)
+        case .product:
+            return templateFormula(.product, fields: [.variable, .lowerBound, .upperBound, .expression], template: template)
+        case .integral:
+            return templateFormula(.integral, fields: [.lowerBound, .upperBound, .integrand, .variable], template: template)
+        case .matrix(let rows, let cols):
+            let fields = (0..<rows).flatMap { row in
+                (0..<cols).map { col in projectField(template.field(.matrixCell(row: row, col: col))) }
+            }
+            return .template(
+                MathTemplateFormula(
+                    kind: .matrix(rows: rows, cols: cols),
+                    fields: fields
+                )
+            )
         }
     }
 
@@ -249,10 +231,58 @@ public enum MathFormulaProjection {
         guard let node else {
             return .sequence([])
         }
-        if node.isEmptyForEditing {
+        switch node {
+        case .template(let template):
+            return projectTemplate(template)
+        case .sequence(let nodes):
+            return projectFieldSequence(nodes)
+        case .placeholder:
+            return .sequence([])
+        case .character, .symbol, .operatorSymbol:
+            return project(node)
+        }
+    }
+
+    private static func projectFieldSequence(_ nodes: [MathNode]) -> MathFormula {
+        let projected = projectSequence(nodes)
+        guard !projected.isEmpty else {
             return .sequence([])
         }
-        return project(node)
+        if projected.count == 1, let single = projected.first, shouldUnwrapSingletonFieldFormula(single) {
+            return single
+        }
+        return .sequence(projected)
+    }
+
+    private static func shouldUnwrapSingletonFieldFormula(_ formula: MathFormula) -> Bool {
+        switch formula {
+        case .template, .function:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private static func templateFormula(
+        _ kind: MathTemplateKind,
+        fields: [FieldID],
+        template: TemplateNode
+    ) -> MathFormula {
+        .template(
+            MathTemplateFormula(
+                kind: kind,
+                fields: fields.map { projectField(template.field($0)) }
+            )
+        )
+    }
+
+    private static func piecewiseFields(rows: Int, template: TemplateNode) -> [MathFormula] {
+        (0..<rows).flatMap { row in
+            [
+                projectField(template.field(.rowExpression(row))),
+                projectField(template.field(.rowCondition(row)))
+            ]
+        }
     }
 
     private static func isVisiblyEmpty(_ formula: MathFormula) -> Bool {

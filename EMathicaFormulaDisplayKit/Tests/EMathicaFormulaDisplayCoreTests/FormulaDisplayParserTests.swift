@@ -185,12 +185,12 @@ final class FormulaDisplayParserTests: XCTestCase {
     }
 
     func testParsesCursorAndPlaceholderForms() {
-        XCTAssertEqual(parser.parse(.init(rawValue: #"\cursor{}"#)), .cursor)
-        XCTAssertEqual(parser.parse(.init(rawValue: #"\placeholder{}"#)), .placeholder)
-        XCTAssertEqual(parser.parse(.init(rawValue: "□")), .placeholder)
+        XCTAssertEqual(parser.parse(.init(rawValue: #"\cursor{}"#)), .anonymousCursor)
+        XCTAssertEqual(parser.parse(.init(rawValue: #"\placeholder{}"#)), .anonymousPlaceholder)
+        XCTAssertEqual(parser.parse(.init(rawValue: "□")), .anonymousPlaceholder)
         XCTAssertEqual(
             parser.parse(.init(rawValue: #"\cursor{}\placeholder{}"#)),
-            .sequence([.cursor, .placeholder])
+            .sequence([.anonymousCursor, .anonymousPlaceholder])
         )
     }
 
@@ -199,7 +199,7 @@ final class FormulaDisplayParserTests: XCTestCase {
             parser.parse(.init(rawValue: #"\frac{x}{\cursor{}\placeholder{}}"#)),
             .fraction(
                 numerator: .text("x", role: .symbol),
-                denominator: .sequence([.cursor, .placeholder])
+                denominator: .sequence([.anonymousCursor, .anonymousPlaceholder])
             )
         )
     }

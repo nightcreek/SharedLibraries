@@ -109,7 +109,7 @@ final class FormulaDisplayProjectionTests: XCTestCase {
     func testDisplayProjectionSerializesPiecewiseMarkup() {
         let formula = MathFormula.template(
             MathTemplateFormula(
-                kind: .piecewise2,
+                kind: .piecewise(rows: 2),
                 fields: [
                     .sequence([.symbol("x")]),
                     .sequence([.operatorSymbol("<"), .number("0")]),
@@ -121,7 +121,7 @@ final class FormulaDisplayProjectionTests: XCTestCase {
 
         XCTAssertEqual(
             FormulaDisplayProjection.displayout(source: formula).rawValue,
-            #"\piecewise{x}{<0}{y}{>0}"#
+            #"\begin{cases}x,&<0\\\\y,&>0\end{cases}"#
         )
     }
 
@@ -139,7 +139,7 @@ final class FormulaDisplayProjectionTests: XCTestCase {
 
         XCTAssertEqual(
             FormulaDisplayProjection.displayout(source: formula).rawValue,
-            #"\parametric{x}{y}{t}"#
+            #"\begin{cases}x=x\\y=y\end{cases},\ t\in t"#
         )
     }
 }

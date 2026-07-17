@@ -184,7 +184,7 @@ final class MathInputSessionTests: XCTestCase {
 
         XCTAssertEqual(
             session.displayout().rawValue,
-            #"\piecewise{x}{0}{y}{1\cursor{}}"#
+            #"\begin{cases}x,&0\\\\y,&1\cursor{}\end{cases}"#
         )
     }
 
@@ -200,7 +200,7 @@ final class MathInputSessionTests: XCTestCase {
 
         XCTAssertEqual(
             session.displayout().rawValue,
-            #"\parametric{x}{y}{t\cursor{}}"#
+            #"\begin{cases}x=x\\y=y\end{cases},\ t\in t\cursor{}"#
         )
     }
 }

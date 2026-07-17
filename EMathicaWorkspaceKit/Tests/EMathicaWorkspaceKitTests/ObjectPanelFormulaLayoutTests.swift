@@ -80,4 +80,34 @@ final class ObjectPanelFormulaLayoutTests: XCTestCase {
 
         XCTAssertEqual(result, .failure(.emptyOutput, message: "Formula markup is empty."))
     }
+
+    func testEmptyDocumentProbeReturnsEmptyOutputWithoutInvokingSwiftMathImagePath() {
+        let result = FormulaReadOnlyRenderProbe.measure(
+            document: .init(root: .sequence([])),
+            options: .init(renderingBackend: .swiftMath, fontRole: .standard),
+            metrics: ObjectPanelFormulaDisplayResolver.makeMetrics(fontSize: 14, minHeight: 24)
+        )
+
+        XCTAssertEqual(result, .failure(.emptyOutput, message: "Formula document is empty."))
+    }
+
+    func testStructuralEmptyFieldsStillProduceSwiftMathMeasurements() {
+        let result = FormulaReadOnlyRenderProbe.measure(
+            document: .init(
+                root: .sqrt(
+                    radicand: .sequence([
+                        .placeholder(.anonymous)
+                    ])
+                )
+            ),
+            options: .init(renderingBackend: .swiftMath, fontRole: .standard),
+            metrics: ObjectPanelFormulaDisplayResolver.makeMetrics(fontSize: 14, minHeight: 24)
+        )
+
+        guard case .success(let measurement) = result else {
+            return XCTFail("Expected non-empty structural formula to render through SwiftMath")
+        }
+        XCTAssertGreaterThan(measurement.width, 0)
+        XCTAssertGreaterThan(measurement.height, 0)
+    }
 }

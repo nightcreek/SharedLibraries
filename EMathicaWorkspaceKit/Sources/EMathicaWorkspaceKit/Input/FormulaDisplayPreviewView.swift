@@ -5,75 +5,114 @@ import SwiftUI
 /// Read-only preview bridge from WorkspaceKit's existing FormulaInputState snapshots
 /// into the standalone FormulaDisplay renderer.
 public struct FormulaDisplayPreviewView: View {
-    private let rawValue: String
+    private let document: FormulaDisplayDocument?
+    private let rawValue: String?
     private let fallbackText: String
     private let configuration: FormulaRenderingConfiguration
     private let surface: FormulaDisplaySurface
     private let minHeight: CGFloat
+    private let usesInternalScrollView: Bool
 
     public init(
         rawValue: String,
         fallbackText: String = "",
         configuration: FormulaRenderingConfiguration = .default,
         surface: FormulaDisplaySurface = .editorPreview,
-        minHeight: CGFloat = FormulaEditorView.preferredHeight(for: EditorState())
+        minHeight: CGFloat = FormulaEditingDisplayView.minimumLayoutHeight,
+        usesInternalScrollView: Bool = true
     ) {
+        self.document = nil
         self.rawValue = rawValue
         self.fallbackText = fallbackText
         self.configuration = configuration
         self.surface = surface
         self.minHeight = minHeight
+        self.usesInternalScrollView = usesInternalScrollView
     }
 
     public init(
         inputState: FormulaInputState,
         configuration: FormulaRenderingConfiguration = .default,
-        surface: FormulaDisplaySurface = .editorPreview
+        surface: FormulaDisplaySurface = .editorPreview,
+        usesInternalScrollView: Bool = true
     ) {
-        self.rawValue = inputState.displayMarkupSnapshot.rawValue
-        self.fallbackText = inputState.displayLatex
+        self.document = inputState.displayDocumentSnapshot
+        self.rawValue = nil
+        self.fallbackText = inputState.latexOutputSnapshot
         self.configuration = configuration
         self.surface = surface
-        self.minHeight = FormulaEditorView.preferredHeight(for: inputState.editorState)
+        self.minHeight = FormulaEditingDisplayView.minimumLayoutHeight
+        self.usesInternalScrollView = usesInternalScrollView
     }
 
     public var body: some View {
-        switch FormulaReadOnlyDisplayResolver.resolve(
+        switch resolvedMode {
+        case .plainText(let text, _):
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                EmptyView()
+            } else {
+                scrollWrappedIfNeeded {
+                    Text(text)
+                        .font(.system(size: Self.previewFontSize, weight: .medium, design: .serif))
+                        .foregroundStyle(Color.primary)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+        case .formula(let resolvedDocument, let resolvedRawValue, let options, _):
+            scrollWrappedIfNeeded {
+                Group {
+                    if let resolvedDocument {
+                        FormulaDisplayView(
+                            document: resolvedDocument,
+                            style: formulaStyle,
+                            options: options,
+                            metrics: FormulaReadOnlyDisplayResolver.makeMetrics(
+                                surface: surface,
+                                fontSize: Self.previewFontSize,
+                                minHeight: minHeight
+                            )
+                        )
+                    } else {
+                        FormulaDisplayView(
+                            rawValue: resolvedRawValue,
+                            style: formulaStyle,
+                            options: options,
+                            metrics: FormulaReadOnlyDisplayResolver.makeMetrics(
+                                surface: surface,
+                                fontSize: Self.previewFontSize,
+                                minHeight: minHeight
+                            )
+                        )
+                    }
+                }
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
+    @MainActor
+    private var resolvedMode: FormulaReadOnlyDisplayResolvedMode {
+        if let document {
+            return FormulaReadOnlyDisplayResolver.resolve(
+                surface: surface,
+                document: document,
+                fallbackText: fallbackText,
+                fontSize: Self.previewFontSize,
+                minHeight: minHeight,
+                allowsMultiline: false,
+                configuration: configuration
+            )
+        }
+
+        return FormulaReadOnlyDisplayResolver.resolve(
             surface: surface,
-            rawValue: rawValue,
+            rawValue: rawValue ?? "",
             fallbackText: fallbackText,
             fontSize: Self.previewFontSize,
             minHeight: minHeight,
             allowsMultiline: false,
             configuration: configuration
-        ) {
-        case .plainText(let text, _):
-            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                EmptyView()
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(text)
-                        .font(.system(size: Self.previewFontSize, weight: .medium, design: .serif))
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-            }
-        case .formula(let resolvedRawValue, let options, _):
-            ScrollView(.horizontal, showsIndicators: false) {
-                FormulaDisplayView(
-                    rawValue: resolvedRawValue,
-                    style: formulaStyle,
-                    options: options,
-                    metrics: FormulaReadOnlyDisplayResolver.makeMetrics(
-                        surface: surface,
-                        fontSize: Self.previewFontSize,
-                        minHeight: minHeight
-                    )
-                )
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-        }
+        )
     }
 
     private var formulaStyle: FormulaDisplayStyle {
@@ -93,6 +132,19 @@ public struct FormulaDisplayPreviewView: View {
             baseFont: .system(size: Self.previewFontSize, weight: .medium, design: .serif),
             scriptScale: 0.66
         )
+    }
+
+    @ViewBuilder
+    private func scrollWrappedIfNeeded<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if usesInternalScrollView {
+            ScrollView(.horizontal, showsIndicators: false) {
+                content()
+            }
+        } else {
+            content()
+        }
     }
 
     private static let previewFontSize: CGFloat = 22

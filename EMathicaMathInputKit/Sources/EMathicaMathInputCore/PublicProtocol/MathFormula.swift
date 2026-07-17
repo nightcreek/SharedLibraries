@@ -37,15 +37,29 @@ public struct MathTemplateFormula: Hashable {
     }
 }
 
-public enum MathTemplateKind: String, Hashable {
+public enum MathTemplateKind: Hashable {
     case fraction
     case sqrt
+    case nthRoot
     case superscript
     case `subscript`
+    case subscriptSuperscript
     case parentheses
+    case brackets
+    case braces
     case absoluteValue
-    case piecewise2
+    case vector
+    case overline
+    case hat
+    case limit
+    case sum
+    case product
+    case integral
+    case matrix(rows: Int, cols: Int)
+    case cases(rows: Int)
+    case piecewise(rows: Int)
     case parametric2D
+    case parametric3D
 }
 
 /// External cursor input for display projection.

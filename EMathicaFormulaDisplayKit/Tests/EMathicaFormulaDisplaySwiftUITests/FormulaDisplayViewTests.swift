@@ -86,4 +86,28 @@ final class FormulaDisplayViewTests: XCTestCase {
         XCTAssertNotNil(style)
 #endif
     }
+
+    func testSwiftMathSnapshotViewDoesNotRenderErrorTextInUI() throws {
+        let source = try formulaDisplaySwiftUISource(named: "FormulaSwiftMathSnapshotView.swift")
+
+        XCTAssertFalse(source.contains("Text(error.message)"))
+        XCTAssertTrue(source.contains("Hidden SwiftMath UI error."))
+        XCTAssertTrue(source.contains("EmptyView()"))
+    }
+
+    func testDedicatedSwiftMathFormulaViewUsesUnifiedFormulaDisplayViewPath() throws {
+        let source = try formulaDisplaySwiftUISource(named: "SwiftMathFormulaView.swift")
+
+        XCTAssertTrue(source.contains("FormulaDisplayView("))
+        XCTAssertFalse(source.contains("case .swiftMathError"))
+    }
+
+    private func formulaDisplaySwiftUISource(named fileName: String) throws -> String {
+        let sourceDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/EMathicaFormulaDisplaySwiftUI")
+        return try String(contentsOf: sourceDirectory.appendingPathComponent(fileName), encoding: .utf8)
+    }
 }

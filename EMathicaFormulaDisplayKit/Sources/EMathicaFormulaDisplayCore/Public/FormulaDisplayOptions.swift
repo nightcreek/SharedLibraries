@@ -9,7 +9,7 @@ public struct FormulaDisplayOptions: Equatable, Sendable {
     public init(
         debugFramesEnabled: Bool = false,
         cursorVisible: Bool = true,
-        renderingBackend: FormulaRenderingBackend = .legacy,
+        renderingBackend: FormulaRenderingBackend = .swiftMath,
         fontRole: FormulaFontRole = .standard
     ) {
         self.debugFramesEnabled = debugFramesEnabled

@@ -1,3 +1,4 @@
+import EMathicaFormulaDisplayCore
 import EMathicaMathInputCore
 import Foundation
 
@@ -12,8 +13,15 @@ public enum MathInputProjectionAdapter {
         formulaSnapshot(from: state.editorState)
     }
 
-    public static func displayMarkup(from state: FormulaInputState) -> FormulaDisplayMarkup {
+    public static func displayMarkup(from state: FormulaInputState) -> EMathicaMathInputCore.FormulaDisplayMarkup {
         FormulaDisplayProjection.displayout(
+            source: formulaSnapshot(from: state),
+            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor)
+        )
+    }
+
+    public static func displayDocument(from state: FormulaInputState) -> FormulaDisplayDocument {
+        FormulaDisplayProjection.displayDocument(
             source: formulaSnapshot(from: state),
             cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor)
         )
@@ -41,8 +49,12 @@ public extension FormulaInputState {
         MathInputProjectionAdapter.formulaSnapshot(from: self)
     }
 
-    var displayMarkupSnapshot: FormulaDisplayMarkup {
+    var displayMarkupSnapshot: EMathicaMathInputCore.FormulaDisplayMarkup {
         MathInputProjectionAdapter.displayMarkup(from: self)
+    }
+
+    var displayDocumentSnapshot: FormulaDisplayDocument {
+        MathInputProjectionAdapter.displayDocument(from: self)
     }
 
     var latexOutputSnapshot: String {

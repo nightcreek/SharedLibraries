@@ -35,6 +35,36 @@ package struct SwiftMathRenderedImage: Sendable, Equatable {
     package var pngData: Data
     package var size: CGSize
     package var baseline: Double
+    package var cursorAnchor: SwiftMathCursorAnchor?
+    package var placeholderAnchors: [SwiftMathPlaceholderAnchor]
+}
+
+public enum SwiftMathCursorContext: Sendable, Equatable {
+    case inline
+    case numerator
+    case denominator
+    case radicalDegree
+    case radicalRadicand
+    case superscript
+    case subscriptField
+    case unknown
+}
+
+package struct SwiftMathCursorAnchor: Sendable, Equatable {
+    package var rect: CGRect
+    package var x: Double
+    package var baseline: Double
+    package var ascent: Double
+    package var descent: Double
+    package var context: SwiftMathCursorContext
+}
+
+package struct SwiftMathPlaceholderAnchor: Sendable, Equatable {
+    package var rect: CGRect
+    package var baseline: Double
+    package var ascent: Double
+    package var descent: Double
+    package var context: SwiftMathCursorContext
 }
 
 package struct SwiftMathVendorRenderError: Error, Sendable, Equatable {
@@ -91,7 +121,26 @@ package enum SwiftMathReadOnlyRenderer {
             .init(
                 pngData: pngData,
                 size: image.size,
-                baseline: Double(info?.ascent ?? 0)
+                baseline: Double(info?.ascent ?? 0),
+                cursorAnchor: info?.cursor.map {
+                    SwiftMathCursorAnchor(
+                        rect: $0.rect,
+                        x: Double($0.x),
+                        baseline: Double($0.baseline),
+                        ascent: Double($0.ascent),
+                        descent: Double($0.descent),
+                        context: $0.context
+                    )
+                },
+                placeholderAnchors: info?.placeholders.map {
+                    SwiftMathPlaceholderAnchor(
+                        rect: $0.rect,
+                        baseline: Double($0.baseline),
+                        ascent: Double($0.ascent),
+                        descent: Double($0.descent),
+                        context: $0.context
+                    )
+                } ?? []
             )
         )
     }

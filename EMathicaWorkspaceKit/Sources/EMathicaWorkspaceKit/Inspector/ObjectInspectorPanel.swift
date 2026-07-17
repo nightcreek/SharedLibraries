@@ -526,6 +526,7 @@ private struct InspectorFormulaLine: View {
 
             WorkspaceReadOnlyFormulaText(
                 surface: .inspector,
+                document: source.document,
                 rawValue: source.rawValue,
                 fallbackText: source.fallbackText,
                 tint: .primary,

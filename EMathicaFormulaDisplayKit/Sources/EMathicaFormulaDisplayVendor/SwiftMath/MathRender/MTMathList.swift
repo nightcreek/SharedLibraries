@@ -40,6 +40,8 @@ public enum MTMathAtomType: Int, CustomStringConvertible, Comparable {
     case punctuation
     /// A placeholder square for future input. Does not exist in TeX
     case placeholder
+    /// An internal cursor anchor used by host editors. Does not exist in TeX.
+    case cursor
     /// An inner atom, i.e. an embedded math list - Inner in TeX
     case inner
     /// An underlined atom - Under in TeX
@@ -99,6 +101,7 @@ public enum MTMathAtomType: Int, CustomStringConvertible, Comparable {
             case .radical:        return "Radical"
             case .punctuation:    return "Punctuation"
             case .placeholder:    return "Placeholder"
+            case .cursor:         return "Cursor"
             case .inner:          return "Inner"
             case .underline:      return "Underline"
             case .overline:       return "Overline"
@@ -243,6 +246,10 @@ public class MTMathAtom: NSObject {
                 return MTMathColorbox(self as? MTMathColorbox)
             case .table:
                 return MTMathTable(self as! MTMathTable)
+            case .cursor:
+                return MTCursorAtom(self as? MTCursorAtom)
+            case .placeholder:
+                return MTPlaceholderAtom(self as? MTPlaceholderAtom)
             default:
                 return MTMathAtom(self)
         }
@@ -318,6 +325,46 @@ public class MTMathAtom: NSObject {
 func isNotBinaryOperator(_ prevNode:MTMathAtom?) -> Bool {
     guard let prevNode = prevNode else { return true }
     return prevNode.type.isNotBinaryOperator()
+}
+
+public enum MTEditorSpacingKind: Sendable, Equatable {
+    case quad
+    case mediumSpace
+    case thickSpace
+}
+
+public final class MTPlaceholderAtom: MTMathAtom {
+    public var spacingKind: MTEditorSpacingKind = .quad
+
+    public override init() {
+        super.init()
+        self.type = .placeholder
+        self.nucleus = ""
+    }
+
+    init(_ atom: MTPlaceholderAtom?) {
+        super.init(atom)
+        self.type = .placeholder
+        self.nucleus = ""
+        self.spacingKind = atom?.spacingKind ?? .quad
+    }
+}
+
+public final class MTCursorAtom: MTMathAtom {
+    public var spacingKind: MTEditorSpacingKind = .mediumSpace
+
+    public override init() {
+        super.init()
+        self.type = .cursor
+        self.nucleus = ""
+    }
+
+    init(_ atom: MTCursorAtom?) {
+        super.init(atom)
+        self.type = .cursor
+        self.nucleus = ""
+        self.spacingKind = atom?.spacingKind ?? .mediumSpace
+    }
 }
 
 // MARK: - MTFraction

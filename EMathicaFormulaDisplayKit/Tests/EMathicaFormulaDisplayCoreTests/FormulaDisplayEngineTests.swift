@@ -63,7 +63,7 @@ final class FormulaDisplayEngineTests: XCTestCase {
             plan.rootNode,
             .fraction(
                 numerator: .text("x", role: .symbol),
-                denominator: .sequence([.cursor, .placeholder])
+                denominator: .sequence([.anonymousCursor, .anonymousPlaceholder])
             )
         )
     }

@@ -48,7 +48,7 @@ final class InspectorFormulaLayoutTests: XCTestCase {
             options: .init(
                 debugFramesEnabled: false,
                 cursorVisible: false,
-                renderingBackend: .legacy,
+                renderingBackend: .swiftMath,
                 fontRole: .standard
             ),
             metrics: FormulaReadOnlyDisplayResolver.makeMetrics(

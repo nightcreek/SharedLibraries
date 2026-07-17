@@ -110,6 +110,28 @@ class MTElementWidthCalculator {
         return width
     }
 
+    func measureEditorSpacing(_ kind: MTEditorSpacingKind) -> CGFloat {
+        guard let mathTable = font.mathTable else {
+            switch kind {
+            case .quad:
+                return font.fontSize
+            case .mediumSpace:
+                return max(font.fontSize * 0.22, 2)
+            case .thickSpace:
+                return max(font.fontSize * 0.28, 2.5)
+            }
+        }
+
+        switch kind {
+        case .quad:
+            return font.fontSize
+        case .mediumSpace:
+            return mathTable.muUnit * 4
+        case .thickSpace:
+            return mathTable.muUnit * 5
+        }
+    }
+
     // MARK: - Inter-element Spacing
 
     /// Get inter-element spacing between two atom types

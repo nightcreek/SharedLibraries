@@ -9,6 +9,7 @@
 
 import Foundation
 import CoreGraphics
+import CoreText
 
 /// Tokenizes MTMathAtom lists into breakable elements
 class MTAtomTokenizer {
@@ -96,6 +97,10 @@ class MTAtomTokenizer {
         // Simple text and variables
         case .ordinary, .variable, .number:
             return tokenizeTextAtom(atom, prevAtom: prevAtom, atomIndex: atomIndex, allAtoms: allAtoms)
+        case .cursor:
+            return tokenizeCursor(atom)
+        case .placeholder:
+            return tokenizePlaceholder(atom)
 
         // Operators
         case .binaryOperator, .relation, .unaryOperator:
@@ -258,6 +263,77 @@ class MTAtomTokenizer {
             color: nil,
             backgroundColor: nil,
             indivisible: false
+        )
+    }
+
+    private func tokenizeCursor(_ atom: MTMathAtom) -> MTBreakableElement {
+        let spacingKind = (atom as? MTCursorAtom)?.spacingKind ?? .mediumSpace
+        let placeholderAdvance = widthCalculator.measureEditorSpacing(spacingKind)
+        let cursorStrokeWidth = max(font.fontSize * 0.05, 1)
+        let xHeight = CTFontGetXHeight(font.ctFont)
+        let fontDescent = CTFontGetDescent(font.ctFont)
+        let ascent = max(xHeight, font.fontSize * 0.45, 1)
+        let descent = max(fontDescent * 0.5, font.fontSize * 0.12, 1)
+        let display = MTCursorDisplay(
+            position: .zero,
+            range: atom.indexRange,
+            ascent: ascent,
+            descent: descent,
+            anchorWidth: cursorStrokeWidth
+        )
+
+        return MTBreakableElement(
+            content: .display(display),
+            width: placeholderAdvance,
+            height: ascent + descent,
+            ascent: ascent,
+            descent: descent,
+            isBreakBefore: true,
+            isBreakAfter: true,
+            penaltyBefore: MTBreakPenalty.good,
+            penaltyAfter: MTBreakPenalty.good,
+            groupId: nil,
+            parentId: nil,
+            originalAtom: atom,
+            indexRange: atom.indexRange,
+            color: nil,
+            backgroundColor: nil,
+            indivisible: true
+        )
+    }
+
+    private func tokenizePlaceholder(_ atom: MTMathAtom) -> MTBreakableElement {
+        let spacingKind = (atom as? MTPlaceholderAtom)?.spacingKind ?? .quad
+        let advance = widthCalculator.measureEditorSpacing(spacingKind)
+        let xHeight = CTFontGetXHeight(font.ctFont)
+        let fontDescent = CTFontGetDescent(font.ctFont)
+        let ascent = max(xHeight, font.fontSize * 0.55, 1)
+        let descent = max(fontDescent, font.fontSize * 0.18, 1)
+        let display = MTPlaceholderDisplay(
+            position: .zero,
+            range: atom.indexRange,
+            ascent: ascent,
+            descent: descent,
+            anchorWidth: max(advance, 1)
+        )
+
+        return MTBreakableElement(
+            content: .display(display),
+            width: advance,
+            height: ascent + descent,
+            ascent: ascent,
+            descent: descent,
+            isBreakBefore: true,
+            isBreakAfter: true,
+            penaltyBefore: MTBreakPenalty.good,
+            penaltyAfter: MTBreakPenalty.good,
+            groupId: nil,
+            parentId: nil,
+            originalAtom: atom,
+            indexRange: atom.indexRange,
+            color: nil,
+            backgroundColor: nil,
+            indivisible: true
         )
     }
 

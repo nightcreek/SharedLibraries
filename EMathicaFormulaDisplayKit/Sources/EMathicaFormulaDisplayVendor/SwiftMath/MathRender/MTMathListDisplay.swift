@@ -610,6 +610,60 @@ class MTGlyphDisplay : MTDisplayDS {
     }
 }
 
+final class MTCursorDisplay: MTDisplay {
+    let anchorWidth: CGFloat
+
+    init(position: CGPoint, range: NSRange, ascent: CGFloat, descent: CGFloat, anchorWidth: CGFloat) {
+        self.anchorWidth = anchorWidth
+        super.init()
+        self.position = position
+        self.range = range
+        self.ascent = ascent
+        self.descent = descent
+        self.width = 0
+    }
+
+    func anchorBounds(at origin: CGPoint) -> CGRect {
+        CGRect(
+            x: origin.x + position.x,
+            y: origin.y + position.y - descent,
+            width: anchorWidth,
+            height: ascent + descent
+        )
+    }
+
+    override public func draw(_ context: CGContext) {
+        super.draw(context)
+    }
+}
+
+final class MTPlaceholderDisplay: MTDisplay {
+    let anchorWidth: CGFloat
+
+    init(position: CGPoint, range: NSRange, ascent: CGFloat, descent: CGFloat, anchorWidth: CGFloat) {
+        self.anchorWidth = anchorWidth
+        super.init()
+        self.position = position
+        self.range = range
+        self.ascent = ascent
+        self.descent = descent
+        self.width = 0
+    }
+
+    func anchorBounds(at origin: CGPoint) -> CGRect {
+        CGRect(
+            x: origin.x + position.x,
+            y: origin.y + position.y - descent,
+            width: anchorWidth,
+            height: ascent + descent
+        )
+    }
+
+    override public func draw(_ context: CGContext) {
+        super.draw(context)
+    }
+}
+
 // MARK: - MTGlyphConstructionDisplay
 
 class MTGlyphConstructionDisplay:MTDisplayDS {

@@ -44,25 +44,11 @@ public struct SwiftMathFormulaView: View {
             fontRole: fontRole
         )
         let metrics = FormulaLayoutMetrics(baseFontSize: fontSize)
-        let resolved = FormulaDisplayContentResolver.resolve(
+        FormulaDisplayView(
             markup: markup,
+            style: style,
             options: options,
-            metrics: metrics,
-            foregroundColor: foregroundColor.resolvedFormulaRGBA()
+            metrics: metrics
         )
-
-        switch resolved {
-        case .legacy(let plan):
-            FormulaRenderPlanView(
-                plan: plan,
-                style: style,
-                showsCursor: false,
-                showsDebugFrames: false
-            )
-        case .swiftMath(let snapshot):
-            FormulaSwiftMathSnapshotView(snapshot: snapshot, error: nil, style: style)
-        case .swiftMathError(let error):
-            FormulaSwiftMathSnapshotView(snapshot: nil, error: error, style: style)
-        }
     }
 }

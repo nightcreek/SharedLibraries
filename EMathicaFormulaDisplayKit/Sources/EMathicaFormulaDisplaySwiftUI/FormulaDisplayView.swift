@@ -4,7 +4,12 @@ import SwiftUI
 public struct FormulaDisplayView: View {
     private enum Storage {
         case legacy(plan: FormulaRenderPlan, showsCursor: Bool, showsDebugFrames: Bool)
-        case swiftMath(snapshot: FormulaSwiftMathSnapshot?, error: FormulaSwiftMathRenderError?)
+        case swiftMath(
+            snapshot: FormulaSwiftMathSnapshot?,
+            error: FormulaSwiftMathRenderError?,
+            showsCursor: Bool,
+            showsPlaceholderBounds: Bool
+        )
     }
 
     private let storage: Storage
@@ -13,6 +18,15 @@ public struct FormulaDisplayView: View {
     public init(markup: FormulaDisplayMarkup) {
         self.init(
             markup: markup,
+            style: .default,
+            options: .default,
+            metrics: .default
+        )
+    }
+
+    public init(document: FormulaDisplayDocument) {
+        self.init(
+            document: document,
             style: .default,
             options: .default,
             metrics: .default
@@ -39,6 +53,15 @@ public struct FormulaDisplayView: View {
         metrics: FormulaLayoutMetrics = .default
     ) {
         self.style = style
+        if FormulaDisplayContentInspector.isEffectivelyEmpty(markup) {
+            self.storage = .swiftMath(
+                snapshot: nil,
+                error: nil,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
+            return
+        }
         let color = style.textColor.resolvedFormulaRGBA()
         switch FormulaDisplayContentResolver.resolve(
             markup: markup,
@@ -53,9 +76,65 @@ public struct FormulaDisplayView: View {
                 showsDebugFrames: options.debugFramesEnabled
             )
         case .swiftMath(let snapshot):
-            self.storage = .swiftMath(snapshot: snapshot, error: nil)
+            self.storage = .swiftMath(
+                snapshot: snapshot,
+                error: nil,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
         case .swiftMathError(let error):
-            self.storage = .swiftMath(snapshot: nil, error: error)
+            self.storage = .swiftMath(
+                snapshot: nil,
+                error: error,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
+        }
+    }
+
+    public init(
+        document: FormulaDisplayDocument,
+        style: FormulaDisplayStyle = .default,
+        options: FormulaDisplayOptions = .default,
+        metrics: FormulaLayoutMetrics = .default
+    ) {
+        self.style = style
+        if FormulaDisplayContentInspector.isEffectivelyEmpty(document) {
+            self.storage = .swiftMath(
+                snapshot: nil,
+                error: nil,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
+            return
+        }
+        let color = style.textColor.resolvedFormulaRGBA()
+        switch FormulaDisplayContentResolver.resolve(
+            document: document,
+            options: options,
+            metrics: metrics,
+            foregroundColor: color
+        ) {
+        case .legacy(let plan):
+            self.storage = .legacy(
+                plan: plan,
+                showsCursor: options.cursorVisible,
+                showsDebugFrames: options.debugFramesEnabled
+            )
+        case .swiftMath(let snapshot):
+            self.storage = .swiftMath(
+                snapshot: snapshot,
+                error: nil,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
+        case .swiftMathError(let error):
+            self.storage = .swiftMath(
+                snapshot: nil,
+                error: error,
+                showsCursor: options.cursorVisible,
+                showsPlaceholderBounds: options.debugFramesEnabled
+            )
         }
     }
 
@@ -96,8 +175,14 @@ public struct FormulaDisplayView: View {
                 showsCursor: showsCursor,
                 showsDebugFrames: showsDebugFrames
             )
-        case .swiftMath(let snapshot, let error):
-            FormulaSwiftMathSnapshotView(snapshot: snapshot, error: error, style: style)
+        case .swiftMath(let snapshot, let error, let showsCursor, let showsPlaceholderBounds):
+            FormulaSwiftMathSnapshotView(
+                snapshot: snapshot,
+                error: error,
+                style: style,
+                showsCursor: showsCursor,
+                showsPlaceholderBounds: showsPlaceholderBounds
+            )
         }
     }
 }

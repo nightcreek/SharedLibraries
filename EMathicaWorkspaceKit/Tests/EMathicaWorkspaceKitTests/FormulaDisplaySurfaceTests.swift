@@ -33,19 +33,19 @@ final class FormulaDisplaySurfaceTests: XCTestCase {
             configuration: .default
         )
 
-        guard case .formula(_, let objectPanelOptions, _) = objectPanelResolved else {
+        guard case .formula(_, _, let objectPanelOptions, _) = objectPanelResolved else {
             return XCTFail("Expected object panel formula resolution")
         }
-        guard case .formula(_, let inspectorOptions, _) = inspectorResolved else {
+        guard case .formula(_, _, let inspectorOptions, _) = inspectorResolved else {
             return XCTFail("Expected inspector formula resolution")
         }
-        guard case .formula(_, let editorPreviewOptions, _) = editorPreviewResolved else {
+        guard case .formula(_, _, let editorPreviewOptions, _) = editorPreviewResolved else {
             return XCTFail("Expected editor preview formula resolution")
         }
 
-        XCTAssertEqual(objectPanelOptions.renderingBackend, .legacy)
-        XCTAssertEqual(inspectorOptions.renderingBackend, .legacy)
-        XCTAssertEqual(editorPreviewOptions.renderingBackend, .legacy)
+        XCTAssertEqual(objectPanelOptions.renderingBackend, .swiftMath)
+        XCTAssertEqual(inspectorOptions.renderingBackend, .swiftMath)
+        XCTAssertEqual(editorPreviewOptions.renderingBackend, .swiftMath)
     }
 
     func testInspectorSourceBuilderUsesInspectorSurface() {

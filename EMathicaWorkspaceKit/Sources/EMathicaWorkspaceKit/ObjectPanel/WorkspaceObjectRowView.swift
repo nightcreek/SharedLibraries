@@ -45,6 +45,7 @@ public struct WorkspaceObjectRowView: View {
                 HStack(alignment: .top, spacing: WorkspaceObjectFormulaDisplayMetrics.nameToExpressionSpacing) {
                     WorkspaceReadOnlyFormulaText(
                         surface: .objectPanel,
+                        document: nil,
                         rawValue: WorkspaceFormulaMarkupResolver.nameMarkup(for: object.name),
                         fallbackText: object.name,
                         tint: primaryText,
@@ -546,6 +547,7 @@ private struct FormulaCompactReadOnlyView: View {
     public var body: some View {
         WorkspaceReadOnlyFormulaText(
             surface: .objectPanel,
+            document: formulaDocument,
             rawValue: formulaMarkup,
             fallbackText: fallbackText,
             tint: tint,
@@ -561,6 +563,13 @@ private struct FormulaCompactReadOnlyView: View {
         WorkspaceObjectFormulaSource.make(
             rawValueFallback: fallbackText,
             editorState: editorState
+        )
+    }
+
+    private var formulaDocument: FormulaDisplayDocument? {
+        guard let editorState else { return nil }
+        return MathInputProjectionAdapter.displayDocument(
+            from: FormulaInputState(editorState: editorState)
         )
     }
 }
@@ -645,6 +654,7 @@ enum WorkspaceFormulaMarkupResolver {
 
 struct WorkspaceReadOnlyFormulaText: View {
     let surface: FormulaDisplaySurface
+    let document: FormulaDisplayDocument?
     let rawValue: String
     let fallbackText: String
     let tint: Color
@@ -655,7 +665,40 @@ struct WorkspaceReadOnlyFormulaText: View {
     let configuration: ObjectPanelFormulaDisplayConfiguration
 
     var body: some View {
-        switch FormulaReadOnlyDisplayResolver.resolve(
+        switch resolvedMode {
+        case .plainText(let text, _):
+            plainTextFallback(text)
+        case .formula(let resolvedDocument, let resolvedRawValue, let options, _):
+            if !allowsMultiline && WorkspaceObjectFormulaDisplayMetrics.singleLineUsesHorizontalScroll {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    formulaContent(document: resolvedDocument, rawValue: resolvedRawValue, options: options)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .frame(minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+            } else {
+                formulaContent(document: resolvedDocument, rawValue: resolvedRawValue, options: options)
+                    .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: allowsMultiline)
+            }
+        }
+    }
+
+    @MainActor
+    private var resolvedMode: FormulaReadOnlyDisplayResolvedMode {
+        if let document {
+            return FormulaReadOnlyDisplayResolver.resolve(
+                surface: surface,
+                document: document,
+                fallbackText: fallbackText,
+                fontSize: fontSize,
+                minHeight: minHeight,
+                allowsMultiline: allowsMultiline,
+                configuration: configuration
+            )
+        }
+
+        return FormulaReadOnlyDisplayResolver.resolve(
             surface: surface,
             rawValue: rawValue,
             fallbackText: fallbackText,
@@ -663,35 +706,35 @@ struct WorkspaceReadOnlyFormulaText: View {
             minHeight: minHeight,
             allowsMultiline: allowsMultiline,
             configuration: configuration
-        ) {
-        case .plainText(let text, _):
-            plainTextFallback(text)
-        case .formula(let rawValue, let options, _):
-            if !allowsMultiline && WorkspaceObjectFormulaDisplayMetrics.singleLineUsesHorizontalScroll {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    formulaContent(rawValue: rawValue, options: options)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .frame(minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
-            } else {
-                formulaContent(rawValue: rawValue, options: options)
-                    .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: allowsMultiline)
-            }
-        }
+        )
     }
 
-    private func formulaContent(rawValue: String, options: FormulaDisplayOptions) -> some View {
-        FormulaDisplayView(
-            rawValue: rawValue,
-            style: formulaStyle,
-            options: options,
-            metrics: formulaMetrics
-        )
-        .frame(maxHeight: maxHeight, alignment: .topLeading)
-        .clipped()
-        .allowsHitTesting(false)
+    @ViewBuilder
+    private func formulaContent(
+        document: FormulaDisplayDocument?,
+        rawValue: String,
+        options: FormulaDisplayOptions
+    ) -> some View {
+        Group {
+            if let document {
+                FormulaDisplayView(
+                    document: document,
+                    style: formulaStyle,
+                    options: options,
+                    metrics: formulaMetrics
+                )
+            } else {
+                FormulaDisplayView(
+                    rawValue: rawValue,
+                    style: formulaStyle,
+                    options: options,
+                    metrics: formulaMetrics
+                )
+            }
+        }
+            .frame(maxHeight: maxHeight, alignment: .topLeading)
+            .clipped()
+            .allowsHitTesting(false)
     }
 
     private var formulaStyle: FormulaDisplayStyle {

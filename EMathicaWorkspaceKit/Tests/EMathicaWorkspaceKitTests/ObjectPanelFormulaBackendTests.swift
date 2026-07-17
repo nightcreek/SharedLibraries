@@ -7,8 +7,8 @@ import XCTest
 
 @MainActor
 final class ObjectPanelFormulaBackendTests: XCTestCase {
-    func testDefaultObjectPanelConfigurationPrefersLegacyStandard() {
-        XCTAssertEqual(ObjectPanelFormulaDisplayConfiguration.default.backend, .legacy)
+    func testDefaultObjectPanelConfigurationPrefersSwiftMathStandard() {
+        XCTAssertEqual(ObjectPanelFormulaDisplayConfiguration.default.backend, .swiftMath)
         XCTAssertEqual(ObjectPanelFormulaDisplayConfiguration.default.fontRole, .standard)
     }
 
@@ -27,7 +27,7 @@ final class ObjectPanelFormulaBackendTests: XCTestCase {
             configuration: configuration
         )
 
-        guard case .formula(_, let options, let fallbackReason) = resolved else {
+        guard case .formula(_, _, let options, let fallbackReason) = resolved else {
             return XCTFail("Expected formula mode")
         }
         XCTAssertEqual(options.renderingBackend, .swiftMath)
@@ -35,7 +35,7 @@ final class ObjectPanelFormulaBackendTests: XCTestCase {
         XCTAssertNil(fallbackReason)
     }
 
-    func testInvalidSwiftMathInputFallsBackToLegacy() {
+    func testInvalidSwiftMathInputStaysOnSwiftMathPathWithDiagnosticReason() {
         let resolved = ObjectPanelFormulaDisplayResolver.resolveUncached(
             rawValue: #"\mathscr{L}"#,
             fallbackText: "L",
@@ -45,10 +45,10 @@ final class ObjectPanelFormulaBackendTests: XCTestCase {
             configuration: .init(backend: .swiftMath, fontRole: .standard)
         )
 
-        guard case .formula(_, let options, let fallbackReason) = resolved else {
-            return XCTFail("Expected legacy formula fallback")
+        guard case .formula(_, _, let options, let fallbackReason) = resolved else {
+            return XCTFail("Expected SwiftMath diagnostic formula resolution")
         }
-        XCTAssertEqual(options.renderingBackend, .legacy)
+        XCTAssertEqual(options.renderingBackend, .swiftMath)
         XCTAssertEqual(fallbackReason, .unsupportedCommand)
     }
 

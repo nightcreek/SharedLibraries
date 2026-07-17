@@ -44,35 +44,34 @@ public enum MathKeyboardLayouts {
                         .number("numbers-8", "8"),
                         .number("numbers-9", "9"),
                         .op("numbers-mul", title: "×", raw: "*"),
-                        .template(
-                            "numbers-div",
-                            markup: "\\frac{\\placeholder{}}{\\placeholder{}}",
-                            token: .fraction,
-                            accessibilityLabel: "分数"
-                        )
+                        .division("numbers-div", accessibilityLabel: "分数")
                     ]),
                     MathKeyboardRow(keys: [
                         .template(
                             "numbers-superscript-square",
                             markup: "x^{2}",
+                            fallback: "x^2",
                             token: .superscript,
                             accessibilityLabel: "上标"
                         ),
                         .template(
                             "numbers-superscript-generic",
-                            markup: "x^{y}",
+                            markup: "x^{n}",
+                            fallback: "x^n",
                             token: .superscript,
                             accessibilityLabel: "指数"
                         ),
                         .template(
                             "numbers-sqrt",
-                            markup: "\\sqrt{\\placeholder{}}",
+                            markup: "\\sqrt{x}",
+                            fallback: "√x",
                             token: .sqrt,
                             accessibilityLabel: "根号"
                         ),
                         .template(
                             "numbers-abs",
-                            markup: "|\\placeholder{}|",
+                            markup: "|x|",
+                            fallback: "|x|",
                             token: .absoluteValue,
                             accessibilityLabel: "绝对值"
                         ),
@@ -119,19 +118,22 @@ public enum MathKeyboardLayouts {
                         .function("functions-exp", "exp"),
                         .template(
                             "functions-abs",
-                            markup: "|\\placeholder{}|",
+                            markup: "|x|",
+                            fallback: "|x|",
                             token: .absoluteValue,
                             accessibilityLabel: "绝对值"
                         ),
                         .template(
                             "functions-sqrt",
-                            markup: "\\sqrt{\\placeholder{}}",
+                            markup: "\\sqrt{x}",
+                            fallback: "√x",
                             token: .sqrt,
                             accessibilityLabel: "根号"
                         ),
                         .template(
                             "functions-fraction",
-                            markup: "\\frac{\\placeholder{}}{\\placeholder{}}",
+                            markup: "\\frac{x}{y}",
+                            fallback: "x/y",
                             token: .fraction,
                             accessibilityLabel: "分数"
                         )
@@ -139,45 +141,41 @@ public enum MathKeyboardLayouts {
                     MathKeyboardRow(keys: [
                         .template(
                             "functions-superscript",
-                            markup: "x^{y}",
+                            markup: "x^{n}",
+                            fallback: "x^n",
                             token: .superscript,
                             accessibilityLabel: "上标"
                         ),
                         .template(
                             "functions-subscript",
                             markup: "x_{n}",
+                            fallback: "x_n",
                             token: .subscript,
                             accessibilityLabel: "下标"
                         ),
                         .legacyFormulaTemplate(
                             "functions-parametric-2d",
-                            markup: "\\parametric{x(t)}{y(t)}{\\placeholder{}}",
+                            markup: "\\begin{cases}x=x(t)\\\\y=y(t)\\end{cases}",
+                            fallback: "x(t), y(t)",
                             accessibilityLabel: "参数方程",
                             kind: .parametricEquation2D
                         ),
                         .legacyFormulaTemplate(
                             "functions-piecewise",
-                            markup: "\\piecewise{\\placeholder{}}{\\placeholder{}}{\\placeholder{}}{\\placeholder{}}",
+                            markup: "\\begin{cases}f\\left(x\\right)&\\\\\\ldots&\\end{cases}",
+                            fallback: "cases",
                             accessibilityLabel: "分段函数",
                             kind: .piecewise(rows: 2)
                         ),
                         .template(
                             "functions-parentheses",
-                            markup: "(\\placeholder{})",
+                            markup: "(x)",
+                            fallback: "(x)",
                             token: .parentheses,
                             accessibilityLabel: "括号模板"
-                        ),
-                        .char("functions-open-paren", "("),
-                        .char("functions-close-paren", ")"),
-                        .op("functions-plus", title: "+", raw: "+"),
-                        .op("functions-minus", title: "-", raw: "-")
+                        )
                     ]),
                     MathKeyboardRow(keys: [
-                        .char("functions-x", "x"),
-                        .char("functions-y", "y"),
-                        .char("functions-t", "t"),
-                        .symbol("functions-pi", title: "π", raw: "\\pi", accessibilityLabel: "pi"),
-                        .char("functions-e", "e"),
                         .system("functions-left", symbol: "←", action: .moveLeft, accessibilityLabel: "左移"),
                         .system("functions-right", symbol: "→", action: .moveRight, accessibilityLabel: "右移"),
                         .system("functions-delete", symbol: "⌫", action: .deleteBackward, accessibilityLabel: "删除"),
@@ -188,52 +186,7 @@ public enum MathKeyboardLayouts {
             MathKeyboardPanel(
                 id: "alphabet",
                 title: "ABC",
-                rows: [
-                    MathKeyboardRow(keys: [
-                        .char("alphabet-a", "a"),
-                        .char("alphabet-b", "b"),
-                        .char("alphabet-c", "c"),
-                        .char("alphabet-d", "d"),
-                        .char("alphabet-n", "n"),
-                        .char("alphabet-r", "r"),
-                        .char("alphabet-h", "h"),
-                        .char("alphabet-k", "k"),
-                        .char("alphabet-m", "m")
-                    ]),
-                    MathKeyboardRow(keys: [
-                        .char("alphabet-p", "p"),
-                        .char("alphabet-q", "q"),
-                        .char("alphabet-u", "u"),
-                        .char("alphabet-v", "v"),
-                        .char("alphabet-A", "A"),
-                        .char("alphabet-B", "B"),
-                        .char("alphabet-C", "C"),
-                        .char("alphabet-D", "D"),
-                        .char("alphabet-E", "E")
-                    ]),
-                    MathKeyboardRow(keys: [
-                        .char("alphabet-f", "f"),
-                        .char("alphabet-g", "g"),
-                        .char("alphabet-i", "i"),
-                        .char("alphabet-j", "j"),
-                        .char("alphabet-l", "l"),
-                        .char("alphabet-o", "o"),
-                        .char("alphabet-s", "s"),
-                        .char("alphabet-w", "w"),
-                        .char("alphabet-z", "z")
-                    ]),
-                    MathKeyboardRow(keys: [
-                        .system("alphabet-left", symbol: "←", action: .moveLeft, accessibilityLabel: "左移"),
-                        .system("alphabet-right", symbol: "→", action: .moveRight, accessibilityLabel: "右移"),
-                        .char("alphabet-comma", ","),
-                        .char("alphabet-period", "."),
-                        .char("alphabet-open-paren", "("),
-                        .char("alphabet-close-paren", ")"),
-                        .op("alphabet-eq", title: "=", raw: "="),
-                        .system("alphabet-delete", symbol: "⌫", action: .deleteBackward, accessibilityLabel: "删除"),
-                        .system("alphabet-submit", symbol: "↵", action: .submit, accessibilityLabel: "提交", accent: true)
-                    ])
-                ]
+                rows: []
             ),
             MathKeyboardPanel(
                 id: "symbols",
@@ -257,18 +210,18 @@ public enum MathKeyboardLayouts {
                         .op("symbols-plus", title: "+", raw: "+"),
                         .op("symbols-minus", title: "-", raw: "-"),
                         .op("symbols-mul", title: "×", raw: "*"),
-                        .op("symbols-div", title: "/", raw: "/"),
+                        .division("symbols-div", accessibilityLabel: "分数"),
                         .op("symbols-eq", title: "=", raw: "="),
                         .char("symbols-comma", ",")
                     ]),
                     MathKeyboardRow(keys: [
-                        .symbol("symbols-theta", title: "θ", raw: "\\theta", accessibilityLabel: "theta"),
-                        .symbol("symbols-alpha", title: "α", raw: "\\alpha", accessibilityLabel: "alpha"),
-                        .symbol("symbols-beta", title: "β", raw: "\\beta", accessibilityLabel: "beta"),
+                        .symbol("symbols-empty", title: "∅", raw: "\\varnothing", accessibilityLabel: "empty set"),
+                        .symbol("symbols-cdot", title: "·", raw: "\\cdot", accessibilityLabel: "dot"),
                         .symbol("symbols-infty", title: "∞", raw: "\\infty", accessibilityLabel: "infinity"),
                         .symbol("symbols-in", title: "∈", raw: "\\in", accessibilityLabel: "belongs to"),
                         .symbol("symbols-not-in", title: "∉", raw: "\\notin", accessibilityLabel: "not belongs to"),
-                        .symbol("symbols-empty", title: "∅", raw: "\\emptyset", accessibilityLabel: "empty set"),
+                        .symbol("symbols-approx", title: "≈", raw: "\\approx", accessibilityLabel: "approximately equal"),
+                        .symbol("symbols-pm", title: "±", raw: "\\pm", accessibilityLabel: "plus or minus"),
                         .system("symbols-delete", symbol: "⌫", action: .deleteBackward, accessibilityLabel: "删除"),
                         .system("symbols-submit", symbol: "↵", action: .submit, accessibilityLabel: "提交", accent: true)
                     ])
@@ -282,7 +235,7 @@ private extension MathKeyboardKey {
     static func char(_ id: String, _ value: String) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .text(value),
+            label: .symbol(markup: literalMathMarkup(for: value), fallback: value),
             intent: .input(.char(value)),
             accessibilityLabel: value
         )
@@ -291,7 +244,7 @@ private extension MathKeyboardKey {
     static func number(_ id: String, _ value: String) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .text(value),
+            label: .symbol(markup: literalMathMarkup(for: value), fallback: value),
             intent: .input(.number(value)),
             accessibilityLabel: value
         )
@@ -300,7 +253,7 @@ private extension MathKeyboardKey {
     static func op(_ id: String, title: String, raw: String, accent: Bool = false) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .text(title),
+            label: .symbol(markup: symbolMarkup(title: title, raw: raw), fallback: title),
             intent: .input(.op(raw)),
             accessibilityLabel: title + (accent ? " accent" : "")
         )
@@ -309,8 +262,17 @@ private extension MathKeyboardKey {
     static func symbol(_ id: String, title: String, raw: String, accessibilityLabel: String) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .text(title),
+            label: .symbol(markup: raw, fallback: title),
             intent: .action(.insertSymbol(raw)),
+            accessibilityLabel: accessibilityLabel
+        )
+    }
+
+    static func division(_ id: String, accessibilityLabel: String) -> MathKeyboardKey {
+        MathKeyboardKey(
+            id: id,
+            label: .symbol(markup: #"\div"#, fallback: "÷"),
+            intent: .input(.template(.fraction)),
             accessibilityLabel: accessibilityLabel
         )
     }
@@ -318,7 +280,7 @@ private extension MathKeyboardKey {
     static func function(_ id: String, _ name: String) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .text(name),
+            label: .formula(markup: functionMarkup(for: name), fallback: functionFallback(for: name)),
             intent: .input(.function(name)),
             accessibilityLabel: name
         )
@@ -327,12 +289,13 @@ private extension MathKeyboardKey {
     static func template(
         _ id: String,
         markup: String,
+        fallback: String,
         token: MathInputTemplateToken,
         accessibilityLabel: String
     ) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .formulaMarkup(markup),
+            label: .formula(markup: markup, fallback: fallback),
             intent: .input(.template(token)),
             accessibilityLabel: accessibilityLabel
         )
@@ -355,12 +318,13 @@ private extension MathKeyboardKey {
     static func legacyFormulaTemplate(
         _ id: String,
         markup: String,
+        fallback: String,
         accessibilityLabel: String,
         kind: TemplateKind
     ) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .formulaMarkup(markup),
+            label: .formula(markup: markup, fallback: fallback),
             intent: .action(.insertTemplate(kind)),
             accessibilityLabel: accessibilityLabel
         )
@@ -375,10 +339,85 @@ private extension MathKeyboardKey {
     ) -> MathKeyboardKey {
         MathKeyboardKey(
             id: id,
-            label: .system(symbol),
+            label: .systemIcon(systemIconName(for: symbol)),
             intent: .action(action),
             size: accent ? .wide : .normal,
             accessibilityLabel: accessibilityLabel
         )
+    }
+
+    static func functionMarkup(for name: String) -> String {
+        switch name {
+        case "sin":
+            return #"\sin(x)"#
+        case "cos":
+            return #"\cos(x)"#
+        case "tan":
+            return #"\tan(x)"#
+        case "ln":
+            return #"\ln(x)"#
+        case "log":
+            return #"\log(x)"#
+        case "exp":
+            return #"e^{x}"#
+        default:
+            return name
+        }
+    }
+
+    static func functionFallback(for name: String) -> String {
+        switch name {
+        case "exp":
+            return "e^x"
+        default:
+            return "\(name)(x)"
+        }
+    }
+
+    static func symbolMarkup(title: String, raw: String) -> String {
+        switch raw {
+        case "*":
+            return #"\times"#
+        case "/":
+            return #"\div"#
+        case #"\leq"#:
+            return #"\leq"#
+        case #"\geq"#:
+            return #"\geq"#
+        case #"\neq"#:
+            return #"\neq"#
+        default:
+            return literalMathMarkup(for: title)
+        }
+    }
+
+    static func literalMathMarkup(for literal: String) -> String {
+        switch literal {
+        case "{":
+            return #"\{"#
+        case "}":
+            return #"\}"#
+        default:
+            return literal
+        }
+    }
+
+    static func systemIconName(for symbol: String) -> String {
+        switch symbol {
+        case "⌫":
+            return "delete.left"
+        case "↵":
+            return "return.left"
+        case "←":
+            return "arrow.left"
+        case "→":
+            return "arrow.right"
+        case "↑":
+            return "arrow.up"
+        case "↓":
+            return "arrow.down"
+        default:
+            return symbol
+        }
     }
 }

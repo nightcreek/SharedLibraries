@@ -1,0 +1,255 @@
+import XCTest
+import EMathicaFormulaDisplayCore
+@testable import EMathicaMathInputCore
+
+final class FormulaDisplayBridgeTests: XCTestCase {
+    func testBridgeBuildsDisplayDocumentWithoutExposingMathInputAST() {
+        let formula = MathFormula.sequence([
+            .symbol("x"),
+            .operatorSymbol("+"),
+            .template(
+                MathTemplateFormula(
+                    kind: .fraction,
+                    fields: [
+                        .sequence([.number("1")]),
+                        .sequence([])
+                    ]
+                )
+            )
+        ])
+
+        let document = FormulaDisplayBridge.document(
+            source: formula,
+            cursor: .init(editorCursor: .init(path: [.sequenceIndex(2), .templateField(.denominator)], offset: 0))
+        )
+
+        guard case .sequence(let rootNodes) = document.root else {
+            return XCTFail("Expected root sequence")
+        }
+        XCTAssertEqual(rootNodes.count, 3)
+        XCTAssertEqual(rootNodes[0], .text("x", role: .symbol))
+        XCTAssertEqual(rootNodes[1], .operatorSymbol("+"))
+        guard case .fraction(let numerator, let denominator) = rootNodes[2] else {
+            return XCTFail("Expected fraction node")
+        }
+        XCTAssertEqual(numerator, .sequence([.text("1", role: .number)]))
+        guard case .sequence(let denominatorNodes) = denominator else {
+            return XCTFail("Expected denominator sequence")
+        }
+        XCTAssertEqual(denominatorNodes.count, 2)
+        guard case .cursor(let cursorToken) = denominatorNodes[0] else {
+            return XCTFail("Expected cursor token in denominator")
+        }
+        XCTAssertEqual(cursorToken.id, "cursor:sequence[2]/field.denominator@0")
+        XCTAssertEqual(cursorToken.sourcePath, ["sequence[2]", "field.denominator"])
+        XCTAssertEqual(cursorToken.fieldIdentity, "denominator")
+        XCTAssertEqual(cursorToken.offset, 0)
+        XCTAssertEqual(cursorToken.spacingPolicy, .medium)
+
+        guard case .placeholder(let placeholderToken) = denominatorNodes[1] else {
+            return XCTFail("Expected placeholder token in denominator")
+        }
+        XCTAssertEqual(placeholderToken.id, "placeholder:sequence[2]/field.denominator")
+        XCTAssertEqual(placeholderToken.sourcePath, ["sequence[2]", "field.denominator"])
+        XCTAssertEqual(placeholderToken.fieldIdentity, "denominator")
+        XCTAssertEqual(placeholderToken.kind, "denominator")
+        XCTAssertEqual(placeholderToken.widthPolicy, .quad)
+    }
+
+    func testBridgeMarkupRoundTripsThroughDocumentSerializer() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .sqrt,
+                    fields: [
+                        .sequence([.symbol("x"), .operatorSymbol("+"), .number("1")])
+                    ]
+                )
+            )
+        ])
+
+        let markup = FormulaDisplayBridge.markup(
+            source: formula,
+            cursor: .init(editorCursor: .init(path: [], offset: 1))
+        )
+        let document = FormulaDisplayBridge.document(
+            source: formula,
+            cursor: .init(editorCursor: .init(path: [], offset: 1))
+        )
+
+        XCTAssertEqual(markup.rawValue, #"\sqrt{x+1}\cursor{}"#)
+        XCTAssertEqual(markup.rawValue, FormulaDisplayDocumentSerializer.serialize(document))
+    }
+
+    func testBridgeDisplaysMultiplicationAsCdotWithoutChangingSourceSerialization() {
+        let formula = MathFormula.sequence([
+            .symbol("a"),
+            .operatorSymbol("*"),
+            .symbol("b")
+        ])
+        let document = FormulaDisplayBridge.document(source: formula)
+        let state = EditorState(root: .sequence([.symbol("a"), .operatorSymbol("*"), .symbol("b")]))
+
+        XCTAssertEqual(FormulaDisplayDocumentSerializer.serialize(document), #"a\cdotb"#)
+        XCTAssertEqual(SourceSerializer().serialize(state), "a*b")
+    }
+
+    func testBridgePreservesNestedEmptyTemplateStructureInDocument() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .absoluteValue,
+                    fields: [
+                        .template(
+                            MathTemplateFormula(
+                                kind: .sqrt,
+                                fields: [
+                                    .sequence([])
+                                ]
+                            )
+                        )
+                    ]
+                )
+            ),
+            .template(
+                MathTemplateFormula(
+                    kind: .fraction,
+                    fields: [
+                        .template(
+                            MathTemplateFormula(
+                                kind: .sqrt,
+                                fields: [
+                                    .sequence([])
+                                ]
+                            )
+                        ),
+                        .symbol("y")
+                    ]
+                )
+            )
+        ])
+
+        let document = FormulaDisplayBridge.document(source: formula)
+
+        guard case .sequence(let rootNodes) = document.root else {
+            return XCTFail("Expected root sequence")
+        }
+
+        guard case .absoluteValue(let absContent) = rootNodes[0] else {
+            return XCTFail("Expected absoluteValue")
+        }
+        guard case .sqrt(let radicand) = absContent else {
+            return XCTFail("Expected nested sqrt inside absoluteValue")
+        }
+        guard case .sequence(let radicandNodes) = radicand else {
+            return XCTFail("Expected radicand sequence")
+        }
+        XCTAssertEqual(radicandNodes.count, 1)
+        guard case .placeholder(let absPlaceholder) = radicandNodes[0] else {
+            return XCTFail("Expected placeholder in nested radicand")
+        }
+        XCTAssertEqual(absPlaceholder.fieldIdentity, "radicand")
+
+        guard case .fraction(let numerator, let denominator) = rootNodes[1] else {
+            return XCTFail("Expected fraction")
+        }
+        guard case .sqrt(let numeratorSqrt) = numerator else {
+            return XCTFail("Expected nested sqrt in numerator")
+        }
+        guard case .sequence(let numeratorNodes) = numeratorSqrt else {
+            return XCTFail("Expected numerator radicand sequence")
+        }
+        XCTAssertEqual(numeratorNodes.count, 1)
+        guard case .placeholder(let numeratorPlaceholder) = numeratorNodes[0] else {
+            return XCTFail("Expected placeholder in nested numerator radicand")
+        }
+        XCTAssertEqual(numeratorPlaceholder.fieldIdentity, "radicand")
+        XCTAssertEqual(denominator, .text("y", role: .symbol))
+    }
+
+    func testBridgePreservesWrappedNestedStructuresFromProjectedFields() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .absoluteValue,
+                    fields: [
+                        .template(
+                            MathTemplateFormula(
+                                kind: .sqrt,
+                                fields: [.sequence([])]
+                            )
+                        )
+                    ]
+                )
+            ),
+            .function(
+                .init(
+                    name: "sin",
+                    arguments: [
+                        .template(
+                            MathTemplateFormula(
+                                kind: .sqrt,
+                                fields: [.sequence([])]
+                            )
+                        )
+                    ]
+                )
+            ),
+            .template(
+                MathTemplateFormula(
+                    kind: .parametric2D,
+                    fields: [
+                        .template(
+                            MathTemplateFormula(
+                                kind: .sqrt,
+                                fields: [.sequence([])]
+                            )
+                        ),
+                        .sequence([.symbol("y")]),
+                        .sequence([.symbol("t")])
+                    ]
+                )
+            )
+        ])
+
+        let document = FormulaDisplayBridge.document(source: formula)
+
+        guard case .sequence(let rootNodes) = document.root else {
+            return XCTFail("Expected root sequence")
+        }
+
+        guard case .absoluteValue(let absContent) = rootNodes[0] else {
+            return XCTFail("Expected absoluteValue")
+        }
+        guard case .sqrt(let absRadicand) = absContent else {
+            return XCTFail("Expected sqrt inside absoluteValue")
+        }
+        guard case .sequence(let absNodes) = absRadicand, absNodes.count == 1 else {
+            return XCTFail("Expected placeholder sequence inside absoluteValue sqrt")
+        }
+
+        guard case .function(let name, let arguments) = rootNodes[1] else {
+            return XCTFail("Expected function node")
+        }
+        XCTAssertEqual(name, "sin")
+        XCTAssertEqual(arguments.count, 1)
+        guard case .sqrt(let functionRadicand) = arguments[0] else {
+            return XCTFail("Expected sqrt function argument")
+        }
+        guard case .sequence(let functionNodes) = functionRadicand, functionNodes.count == 1 else {
+            return XCTFail("Expected placeholder sequence inside function sqrt")
+        }
+
+        guard case .parametric2D(let x, let y, let range) = rootNodes[2] else {
+            return XCTFail("Expected parametric2D")
+        }
+        guard case .sqrt(let parametricX) = x else {
+            return XCTFail("Expected sqrt in parametric x field")
+        }
+        guard case .sequence(let parametricXNodes) = parametricX, parametricXNodes.count == 1 else {
+            return XCTFail("Expected placeholder sequence inside parametric sqrt")
+        }
+        XCTAssertEqual(y, .sequence([.text("y", role: .symbol)]))
+        XCTAssertEqual(range, .sequence([.text("t", role: .symbol)]))
+    }
+}

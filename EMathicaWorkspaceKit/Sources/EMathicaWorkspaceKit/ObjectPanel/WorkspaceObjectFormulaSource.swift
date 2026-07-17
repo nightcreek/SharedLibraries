@@ -1,10 +1,12 @@
 import EMathicaMathCore
+import EMathicaFormulaDisplayCore
 import EMathicaMathInputCore
 import CoreGraphics
 import Foundation
 
 struct WorkspaceReadOnlyFormulaSource: Equatable {
     var surface: FormulaDisplaySurface
+    var document: FormulaDisplayDocument?
     var rawValue: String
     var fallbackText: String
     var fontSize: CGFloat
@@ -21,6 +23,7 @@ struct WorkspaceReadOnlyFormulaSource: Equatable {
     ) -> WorkspaceReadOnlyFormulaSource {
         .init(
             surface: surface,
+            document: nil,
             rawValue: rawValue,
             fallbackText: fallbackText,
             fontSize: fontSize,
@@ -45,11 +48,13 @@ struct WorkspaceReadOnlyFormulaSource: Equatable {
         )
 
         let rawValue: String
+        let document: FormulaDisplayDocument?
         if let editorState {
-            rawValue = MathInputProjectionAdapter.displayMarkup(
-                from: FormulaInputState(editorState: editorState)
-            ).rawValue
+            let inputState = FormulaInputState(editorState: editorState)
+            document = MathInputProjectionAdapter.displayDocument(from: inputState)
+            rawValue = MathInputProjectionAdapter.displayMarkup(from: inputState).rawValue
         } else {
+            document = nil
             rawValue = WorkspaceFormulaMarkupResolver.expressionMarkup(
                 displayText: object.expression.displayText,
                 originalLatex: object.expression.originalLatex,
@@ -59,6 +64,7 @@ struct WorkspaceReadOnlyFormulaSource: Equatable {
 
         return .init(
             surface: .objectPanel,
+            document: document,
             rawValue: rawValue,
             fallbackText: fallbackText,
             fontSize: fontSize,

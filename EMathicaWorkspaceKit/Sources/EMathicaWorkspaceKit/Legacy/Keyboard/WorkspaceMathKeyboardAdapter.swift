@@ -1,5 +1,6 @@
 import EMathicaMathInputCore
 
+@available(*, deprecated, message: "Use MathInputKeyboardView and MathKeyboardLabelDescriptor instead.")
 enum WorkspaceMathKeyboardAdapter {
     static func rows(for panelID: String) -> [[KeyboardKey]] {
         guard let panel = MathKeyboardLayouts.standard.panels.first(where: { $0.id == panelID }) else {
@@ -18,17 +19,17 @@ enum WorkspaceMathKeyboardAdapter {
         case "numbers-superscript-square":
             return ("x²", "上标")
         case "numbers-superscript-generic":
-            return ("xʸ", "指数")
+            return ("xⁿ", "指数")
         case "numbers-sqrt", "functions-sqrt":
-            return ("√□", "根号")
+            return ("√x", "根号")
         case "numbers-abs":
-            return ("|□|", "绝对值")
+            return ("|x|", "绝对值")
         case "functions-abs":
-            return ("|□|", "abs")
+            return ("|x|", "abs")
         case "functions-fraction":
-            return ("□⁄□", "分数")
+            return ("x⁄y", "分数")
         case "functions-superscript":
-            return ("xʸ", "上标")
+            return ("xⁿ", "上标")
         case "functions-subscript":
             return ("xₙ", "下标")
         case "functions-parametric-2d":
@@ -39,10 +40,12 @@ enum WorkspaceMathKeyboardAdapter {
             return ("(□)", "括号")
         default:
             switch key.label {
-            case .text(let text), .system(let text):
+            case .text(let text):
                 return (text, nil)
-            case .formulaMarkup(let markup):
-                return (markup, nil)
+            case .symbol(_, let fallback), .formula(_, let fallback):
+                return (fallback, nil)
+            case .systemIcon(let symbolName):
+                return (symbolName, nil)
             }
         }
     }

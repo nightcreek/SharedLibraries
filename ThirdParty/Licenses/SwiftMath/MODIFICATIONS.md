@@ -27,8 +27,14 @@ Imported from:
 
 No local changes in this phase implement:
 
-- cursor atoms
 - placeholder editing behavior
 - selection or hit testing
 - editor-surface switching
 - public exposure of SwiftMath implementation types
+
+## Phase 2A-1 local modifications
+
+- Added internal SwiftMath cursor atom support for the host-only `\cursor{}` token.
+- Extended vendored parsing so `\cursor` and `\cursor{}` resolve to a dedicated cursor atom instead of failing parse.
+- Added vendor-internal cursor layout extraction so SwiftMath image rendering can return cursor geometry without drawing a cursor.
+- Kept cursor rendering disabled; this phase only exports layout anchors for later blink and navigation work.

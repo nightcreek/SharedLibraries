@@ -2,7 +2,12 @@ import EMathicaFormulaDisplayCore
 import Foundation
 
 enum FormulaReadOnlyDisplayResolvedMode: Equatable {
-    case formula(rawValue: String, options: FormulaDisplayOptions, fallbackReason: FormulaDisplayFallbackReason?)
+    case formula(
+        document: FormulaDisplayDocument?,
+        rawValue: String,
+        options: FormulaDisplayOptions,
+        fallbackReason: FormulaDisplayFallbackReason?
+    )
     case plainText(text: String, fallbackReason: FormulaDisplayFallbackReason)
 }
 
@@ -28,6 +33,46 @@ enum FormulaReadOnlyDisplayResolver {
             allowsMultiline: allowsMultiline,
             configuration: configuration
         )
+    }
+
+    @MainActor
+    static func resolve(
+        surface: FormulaDisplaySurface,
+        document: FormulaDisplayDocument,
+        fallbackText: String,
+        fontSize: CGFloat,
+        minHeight: CGFloat,
+        allowsMultiline: Bool,
+        configuration: FormulaRenderingConfiguration
+    ) -> FormulaReadOnlyDisplayResolvedMode {
+        let rawValue = FormulaDisplayDocumentSerializer.serialize(document)
+        let key = FormulaReadOnlyDisplayCacheKey(
+            surface: surface,
+            rawValue: rawValue,
+            fallbackText: fallbackText,
+            fontSize: fontSize,
+            minHeight: minHeight,
+            allowsMultiline: allowsMultiline,
+            configuration: configuration
+        )
+        if let cached = cache[key], case .formula(_, let cachedRawValue, let options, let fallbackReason) = cached, cachedRawValue == rawValue {
+            return .formula(document: document, rawValue: rawValue, options: options, fallbackReason: fallbackReason)
+        } else if let cached = cache[key] {
+            return cached
+        }
+
+        let resolved = resolveUncached(
+            surface: surface,
+            document: document,
+            rawValue: rawValue,
+            fallbackText: fallbackText,
+            fontSize: fontSize,
+            minHeight: minHeight,
+            allowsMultiline: allowsMultiline,
+            configuration: configuration
+        )
+        cache[key] = resolved
+        return resolved
     }
 
     @MainActor
@@ -87,6 +132,7 @@ enum FormulaReadOnlyDisplayResolver {
 
     static func resolveUncached(
         surface: FormulaDisplaySurface,
+        document: FormulaDisplayDocument,
         rawValue: String,
         fallbackText: String,
         fontSize: CGFloat,
@@ -95,10 +141,68 @@ enum FormulaReadOnlyDisplayResolver {
         configuration: FormulaRenderingConfiguration
     ) -> FormulaReadOnlyDisplayResolvedMode {
         let trimmedMarkup = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedFallback = fallbackText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedFallback = sanitizePlainText(fallbackText)
+        let trimmedFallback = sanitizedFallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedMarkupText = sanitizePlainText(rawValue)
         guard !trimmedMarkup.isEmpty else {
             if !trimmedFallback.isEmpty {
-                return .plainText(text: fallbackText, fallbackReason: .emptyOutput)
+                return .plainText(text: sanitizedFallback, fallbackReason: .emptyOutput)
+            }
+            return .plainText(text: "", fallbackReason: .emptyOutput)
+        }
+
+        let metrics = makeMetrics(surface: surface, fontSize: fontSize, minHeight: minHeight)
+        let preferredOptions = FormulaDisplayOptions(
+            debugFramesEnabled: false,
+            cursorVisible: false,
+            renderingBackend: configuration.backend,
+            fontRole: configuration.fontRole
+        )
+
+        switch configuration.backend {
+        case .legacy:
+            switch FormulaReadOnlyRenderProbe.measure(document: document, options: preferredOptions, metrics: metrics) {
+            case .success:
+                return .formula(document: document, rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
+            case .failure(let reason, _):
+                return .plainText(
+                    text: !trimmedFallback.isEmpty ? sanitizedFallback : sanitizedMarkupText,
+                    fallbackReason: reason
+                )
+            }
+        case .swiftMath:
+            switch FormulaReadOnlyRenderProbe.measure(document: document, options: preferredOptions, metrics: metrics) {
+            case .success:
+                return .formula(document: document, rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
+            case .failure(let reason, _):
+                #if DEBUG
+                return .formula(document: document, rawValue: rawValue, options: preferredOptions, fallbackReason: reason)
+                #else
+                return .plainText(
+                    text: !trimmedFallback.isEmpty ? sanitizedFallback : sanitizedMarkupText,
+                    fallbackReason: reason
+                )
+                #endif
+            }
+        }
+    }
+
+    static func resolveUncached(
+        surface: FormulaDisplaySurface,
+        rawValue: String,
+        fallbackText: String,
+        fontSize: CGFloat,
+        minHeight: CGFloat,
+        allowsMultiline: Bool,
+        configuration: FormulaRenderingConfiguration
+    ) -> FormulaReadOnlyDisplayResolvedMode {
+        let trimmedMarkup = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedFallback = sanitizePlainText(fallbackText)
+        let trimmedFallback = sanitizedFallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedMarkupText = sanitizePlainText(rawValue)
+        guard !trimmedMarkup.isEmpty else {
+            if !trimmedFallback.isEmpty {
+                return .plainText(text: sanitizedFallback, fallbackReason: .emptyOutput)
             }
             return .plainText(text: "", fallbackReason: .emptyOutput)
         }
@@ -116,30 +220,26 @@ enum FormulaReadOnlyDisplayResolver {
         case .legacy:
             switch FormulaReadOnlyRenderProbe.measure(markup: markup, options: preferredOptions, metrics: metrics) {
             case .success:
-                return .formula(rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
+                return .formula(document: nil, rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
             case .failure(let reason, _):
-                return .plainText(text: !trimmedFallback.isEmpty ? fallbackText : rawValue, fallbackReason: reason)
+                return .plainText(
+                    text: !trimmedFallback.isEmpty ? sanitizedFallback : sanitizedMarkupText,
+                    fallbackReason: reason
+                )
             }
         case .swiftMath:
             switch FormulaReadOnlyRenderProbe.measure(markup: markup, options: preferredOptions, metrics: metrics) {
             case .success:
-                return .formula(rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
+                return .formula(document: nil, rawValue: rawValue, options: preferredOptions, fallbackReason: nil)
             case .failure(let reason, _):
-                let legacyOptions = FormulaDisplayOptions(
-                    debugFramesEnabled: false,
-                    cursorVisible: false,
-                    renderingBackend: .legacy,
-                    fontRole: configuration.fontRole
+                #if DEBUG
+                return .formula(document: nil, rawValue: rawValue, options: preferredOptions, fallbackReason: reason)
+                #else
+                return .plainText(
+                    text: !trimmedFallback.isEmpty ? sanitizedFallback : sanitizedMarkupText,
+                    fallbackReason: reason
                 )
-                switch FormulaReadOnlyRenderProbe.measure(markup: markup, options: legacyOptions, metrics: metrics) {
-                case .success:
-                    return .formula(rawValue: rawValue, options: legacyOptions, fallbackReason: reason)
-                case .failure(let legacyReason, _):
-                    return .plainText(
-                        text: !trimmedFallback.isEmpty ? fallbackText : rawValue,
-                        fallbackReason: legacyReason
-                    )
-                }
+                #endif
             }
         }
     }
@@ -180,6 +280,14 @@ enum FormulaReadOnlyDisplayResolver {
                 minimumBoxSize: .init(width: max(11, fontSize * 0.76), height: max(Double(minHeight), fontSize * 1.02))
             )
         }
+    }
+
+    static func sanitizePlainText(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: #"\cursor{}"#, with: "")
+            .replacingOccurrences(of: #"\cursor"#, with: "")
+            .replacingOccurrences(of: #"\placeholder{}"#, with: "")
+            .replacingOccurrences(of: #"\placeholder"#, with: "")
     }
 }
 

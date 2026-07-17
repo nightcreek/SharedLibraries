@@ -29,6 +29,15 @@ public struct FormulaLayoutEngine: Sendable {
             return layoutFraction(numerator: numerator, denominator: denominator, metrics: metrics, path: path)
         case .sqrt(let radicand):
             return layoutSqrt(radicand: radicand, metrics: metrics, path: path)
+        case .nthRoot, .brackets, .braces, .accent, .matrix, .cases, .limit, .largeOperator, .integral, .parametric3D:
+            return layoutText(
+                FormulaDisplayDocumentSerializer.serialize(node),
+                kind: .raw,
+                textRole: .raw,
+                metrics: metrics,
+                path: path,
+                horizontalPadding: metrics.rawFallbackPadding
+            )
         case .superscript(let base, let exponent):
             return layoutSuperscript(base: base, exponent: exponent, metrics: metrics, path: path)
         case .subscript(let base, let subscriptNode):

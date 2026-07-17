@@ -842,8 +842,7 @@ private struct WorkspaceInlineInputDock: View {
                 .allowsHitTesting(
                     state.isInputPresented || WorkspaceInlineInputVisualMetrics.formulaContentHitTestingWhenClosed
                 )
-                .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: FormulaEditingDisplayView.minimumLayoutHeight, alignment: .topLeading)
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 FormulaDisplayPreviewView(
@@ -852,7 +851,7 @@ private struct WorkspaceInlineInputDock: View {
                     surface: .editorPreview
                 )
                     .allowsHitTesting(false)
-                    .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
+                    .frame(minHeight: FormulaEditingDisplayView.minimumLayoutHeight, alignment: .topLeading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 

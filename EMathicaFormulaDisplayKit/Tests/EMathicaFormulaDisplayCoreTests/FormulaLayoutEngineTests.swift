@@ -137,7 +137,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testParenthesesPlaceholderLeavesVisibleHorizontalGap() {
-        let box = engine.layout(.parentheses(content: .placeholder))
+        let box = engine.layout(.parentheses(content: .anonymousPlaceholder))
         guard let content = box.children.first else {
             return XCTFail("Expected content child")
         }
@@ -147,7 +147,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testAbsoluteValuePlaceholderLeavesVisibleHorizontalGap() {
-        let box = engine.layout(.absoluteValue(content: .placeholder))
+        let box = engine.layout(.absoluteValue(content: .anonymousPlaceholder))
         guard let content = box.children.first else {
             return XCTFail("Expected content child")
         }
@@ -157,7 +157,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testSqrtRadicandOffsetStaysCompactWithoutOverlap() {
-        let box = engine.layout(.sqrt(radicand: .placeholder))
+        let box = engine.layout(.sqrt(radicand: .anonymousPlaceholder))
         guard let child = box.children.first else {
             return XCTFail("Expected radicand child")
         }
@@ -167,7 +167,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testSqrtTopPaddingStaysCompact() {
-        let box = engine.layout(.sqrt(radicand: .placeholder))
+        let box = engine.layout(.sqrt(radicand: .anonymousPlaceholder))
         guard let child = box.children.first else {
             return XCTFail("Expected radicand child")
         }
@@ -176,7 +176,7 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testFunctionPlaceholderHasPositiveGap() {
-        let box = engine.layout(.function(name: "sin", arguments: [.placeholder]))
+        let box = engine.layout(.function(name: "sin", arguments: [.anonymousPlaceholder]))
         XCTAssertEqual(box.children.count, 2)
         let functionName = box.children[0]
         let placeholder = box.children[1]
@@ -218,19 +218,19 @@ final class FormulaLayoutEngineTests: XCTestCase {
     }
 
     func testCursorLayoutHasNonzeroRect() {
-        let box = engine.layout(.cursor)
+        let box = engine.layout(.anonymousCursor)
         XCTAssertGreaterThan(box.size.width, 0)
         XCTAssertGreaterThan(box.size.height, 0)
     }
 
     func testPlaceholderLayoutHasNonzeroRect() {
-        let box = engine.layout(.placeholder)
+        let box = engine.layout(.anonymousPlaceholder)
         XCTAssertGreaterThan(box.size.width, 0)
         XCTAssertGreaterThan(box.size.height, 0)
     }
 
     func testCursorAndPlaceholderSequenceHasBothChildren() {
-        let box = engine.layout(.sequence([.cursor, .placeholder]))
+        let box = engine.layout(.sequence([.anonymousCursor, .anonymousPlaceholder]))
         XCTAssertEqual(box.children.count, 2)
     }
 

@@ -6,6 +6,18 @@ import XCTest
 
 @MainActor
 final class FormulaDisplayPreviewViewTests: XCTestCase {
+    func testEditorPreviewUsesSingleMinimumLayoutHeightFloor() {
+        XCTAssertEqual(FormulaEditingDisplayView.minimumLayoutHeight, 44 as CGFloat)
+        XCTAssertEqual(
+            FormulaReadOnlyDisplayResolver.makeMetrics(
+                surface: .editorPreview,
+                fontSize: 22,
+                minHeight: FormulaEditingDisplayView.minimumLayoutHeight
+            ).minimumBoxSize.height,
+            44
+        )
+    }
+
     func testFormulaDisplayPreviewViewCanInitializeFromRawValue() {
         let view = FormulaDisplayPreviewView(rawValue: "x+1")
         XCTAssertNotNil(view)
@@ -22,12 +34,12 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         state.source = "x+1"
         let sourceBefore = state.source
         let displayLatexBefore = state.displayLatex
-        let expectedRawValue = state.displayMarkupSnapshot.rawValue
+        let expectedDocument = state.displayDocumentSnapshot
 
         let view = FormulaDisplayPreviewView(inputState: state)
 
         XCTAssertNotNil(view)
-        XCTAssertEqual(state.displayMarkupSnapshot.rawValue, expectedRawValue)
+        XCTAssertEqual(state.displayDocumentSnapshot, expectedDocument)
         XCTAssertEqual(state.source, sourceBefore)
         XCTAssertEqual(state.displayLatex, displayLatexBefore)
     }
@@ -45,9 +57,32 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         XCTAssertEqual(state.source, "x+1")
     }
 
+    func testPreviewBridgeUsesCleanLatexFallbackWithoutInternalCursorToken() {
+        let state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([.character("(")]),
+                cursor: EditorCursor(path: [], offset: 1),
+                selection: nil
+            )
+        )
+
+        XCTAssertFalse(state.latexOutputSnapshot.contains(#"\cursor"#))
+        XCTAssertTrue(state.displayDocumentSnapshot == MathInputProjectionAdapter.displayDocument(from: state))
+    }
+
     func testWorkspaceKitCanImportFormulaDisplaySwiftUIThroughPreviewBridge() {
         let view = FormulaDisplayPreviewView(rawValue: #"\frac{x}{\placeholder{}}"#)
         XCTAssertNotNil(view)
+    }
+
+    func testPreviewBridgeDoesNotRenderSwiftMathErrorsAsUserVisibleText() throws {
+        let previewSource = try workspaceSource(at: "Input/FormulaDisplayPreviewView.swift")
+        let snapshotSource = try formulaDisplaySwiftUISource(named: "FormulaSwiftMathSnapshotView.swift")
+
+        XCTAssertTrue(previewSource.contains("FormulaDisplayView("))
+        XCTAssertFalse(previewSource.contains("Text(error"))
+        XCTAssertFalse(previewSource.contains("localizedDescription"))
+        XCTAssertFalse(snapshotSource.contains("Text(error.message)"))
     }
 
     func testPreviewBridgeFallbackTextStillUsesFormulaDisplayPath() {
@@ -72,6 +107,13 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         )
 
         XCTAssertNotNil(view)
+    }
+
+    func testWorkspaceViewNoLongerUsesLegacyPreferredHeightForEditorPreviewSizing() throws {
+        let source = try workspaceSource(named: "WorkspaceView.swift")
+        XCTAssertFalse(source.contains(".frame(minHeight: FormulaEditorView.preferredHeight"))
+        XCTAssertFalse(source.contains(".fixedSize(horizontal: false, vertical: true)"))
+        XCTAssertTrue(source.contains("FormulaEditingDisplayView.minimumLayoutHeight"))
     }
 
     func testEditingDisplayBridgeRendersLeqAsVisibleFormulaSymbol() {
@@ -154,5 +196,38 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsParameterSuggestionsInDock)
         XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsCommitErrorBanner)
         XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsPiecewiseAppendRowControl)
+    }
+
+    private func workspaceSource(named fileName: String) throws -> String {
+        let sourceDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/EMathicaWorkspaceKit")
+        return try String(contentsOf: sourceDirectory.appendingPathComponent(fileName), encoding: .utf8)
+    }
+
+    private func workspaceSource(at relativePath: String) throws -> String {
+        let sourceDirectory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/EMathicaWorkspaceKit")
+        return try String(contentsOf: sourceDirectory.appendingPathComponent(relativePath), encoding: .utf8)
+    }
+
+    private func formulaDisplaySwiftUISource(named fileName: String) throws -> String {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("EMathicaFormulaDisplayKit")
+        return try String(
+            contentsOf: packageRoot
+                .appendingPathComponent("Sources/EMathicaFormulaDisplaySwiftUI")
+                .appendingPathComponent(fileName),
+            encoding: .utf8
+        )
     }
 }

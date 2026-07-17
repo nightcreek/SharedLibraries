@@ -29,7 +29,9 @@ let package = Package(
     targets: [
         .target(
             name: "EMathicaMathInputCore",
-            dependencies: []
+            dependencies: [
+                .product(name: "EMathicaFormulaDisplayCore", package: "EMathicaFormulaDisplayKit")
+            ]
         ),
         .target(
             name: "EMathicaMathInputUI",

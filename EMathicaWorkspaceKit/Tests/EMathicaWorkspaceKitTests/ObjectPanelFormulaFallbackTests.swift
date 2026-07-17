@@ -3,7 +3,7 @@ import XCTest
 @testable import EMathicaWorkspaceKit
 
 final class ObjectPanelFormulaFallbackTests: XCTestCase {
-    func testMathscrFallsBackFromSwiftMathToLegacy() {
+    func testMathscrStaysOnSwiftMathPathAndReportsUnsupportedCommand() {
         let resolved = ObjectPanelFormulaDisplayResolver.resolveUncached(
             rawValue: #"\mathscr{L}"#,
             fallbackText: "L",
@@ -13,10 +13,10 @@ final class ObjectPanelFormulaFallbackTests: XCTestCase {
             configuration: .init(backend: .swiftMath, fontRole: .standard)
         )
 
-        guard case .formula(_, let options, let reason) = resolved else {
-            return XCTFail("Expected formula fallback")
+        guard case .formula(_, _, let options, let reason) = resolved else {
+            return XCTFail("Expected SwiftMath diagnostic formula result")
         }
-        XCTAssertEqual(options.renderingBackend, .legacy)
+        XCTAssertEqual(options.renderingBackend, .swiftMath)
         XCTAssertEqual(reason, .unsupportedCommand)
     }
 

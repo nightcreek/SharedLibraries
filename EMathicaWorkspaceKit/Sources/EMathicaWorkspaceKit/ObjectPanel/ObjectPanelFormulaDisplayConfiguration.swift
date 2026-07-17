@@ -14,7 +14,7 @@ public struct FormulaRenderingConfiguration: Hashable, Sendable {
     public var fontRole: FormulaFontRole
 
     public init(
-        backend: FormulaRenderingBackend = .legacy,
+        backend: FormulaRenderingBackend = .swiftMath,
         fontRole: FormulaFontRole = .standard
     ) {
         self.backend = backend

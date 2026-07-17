@@ -1,5 +1,6 @@
 import EMathicaMathInputCore
 
+@available(*, deprecated, message: "Use MathKeyboardKeyLabel and MathInputKeyboardView instead.")
 public struct KeyboardKey: Identifiable, Hashable, Equatable {
     public var id: String
     public var title: String

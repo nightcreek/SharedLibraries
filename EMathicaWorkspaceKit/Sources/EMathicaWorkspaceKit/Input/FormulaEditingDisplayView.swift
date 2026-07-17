@@ -5,6 +5,8 @@ import SwiftUI
 /// existing FormulaEditorView interaction layer for cursor hit-testing and
 /// hardware keyboard capture.
 public struct FormulaEditingDisplayView: View {
+    public static let minimumLayoutHeight: CGFloat = 44
+
     public let inputState: FormulaInputState
     public let isFocused: Bool
     public let configuration: FormulaRenderingConfiguration
@@ -26,22 +28,25 @@ public struct FormulaEditingDisplayView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .leading) {
+        ScrollView(.horizontal, showsIndicators: false) {
             FormulaDisplayPreviewView(
                 inputState: inputState,
                 configuration: configuration,
-                surface: .editorPreview
+                surface: .editorPreview,
+                usesInternalScrollView: false
             )
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-
-            FormulaEditorView(
-                editorState: inputState.editorState,
-                isFocused: isFocused,
-                onTapCursor: onTapCursor,
-                onKeyboardAction: onKeyboardAction
-            )
-            .opacity(0.015)
+            .overlay(alignment: .topLeading) {
+                FormulaEditorView(
+                    editorState: inputState.editorState,
+                    isFocused: isFocused,
+                    usesInternalScrollView: false,
+                    interactionOverlayOnly: true,
+                    onTapCursor: onTapCursor,
+                    onKeyboardAction: onKeyboardAction
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
+        .frame(minHeight: Self.minimumLayoutHeight, alignment: .topLeading)
     }
 }
