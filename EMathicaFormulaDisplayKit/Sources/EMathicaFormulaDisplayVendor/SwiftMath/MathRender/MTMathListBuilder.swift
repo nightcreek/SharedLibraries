@@ -918,6 +918,9 @@ public struct MTMathListBuilder {
         } else if command == "emcursorthick" {
             consumeOptionalEmptyGroup()
             return MTMathAtomFactory.cursor(spacingKind: .thickSpace)
+        } else if command == "eminsertion" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .zero)
         } else if command == "emplaceholder" {
             consumeOptionalEmptyGroup()
             return MTMathAtomFactory.placeholder()
@@ -1262,6 +1265,9 @@ public struct MTMathListBuilder {
         } else if command == "emcursorthick" {
             consumeOptionalEmptyGroup()
             return MTMathAtomFactory.cursor(spacingKind: .thickSpace)
+        } else if command == "eminsertion" {
+            consumeOptionalEmptyGroup()
+            return MTMathAtomFactory.cursor(spacingKind: .zero)
         } else if command == "emplaceholder" {
             consumeOptionalEmptyGroup()
             return MTMathAtomFactory.placeholder()

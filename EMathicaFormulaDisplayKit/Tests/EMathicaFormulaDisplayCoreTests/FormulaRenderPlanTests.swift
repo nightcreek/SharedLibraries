@@ -181,6 +181,34 @@ final class FormulaRenderPlanTests: XCTestCase {
         XCTAssertLessThanOrEqual(glyphElement.frame.maxY, plan.bounds.maxY)
     }
 
+    func testSqrtGlyphAndOverlineRenderAfterRadicandContent() {
+        let plan = engine.getPlan(from: .init(rawValue: #"\sqrt{\placeholder{}}"#))
+
+        guard
+            let placeholderIndex = plan.elements.firstIndex(where: {
+                if case .placeholder = $0 { return true }
+                return false
+            }),
+            let glyphIndex = plan.elements.firstIndex(where: {
+                if case .text(let text) = $0 {
+                    return text.text == "√" && text.fontRole == .radicalGlyph
+                }
+                return false
+            }),
+            let overlineIndex = plan.elements.firstIndex(where: {
+                if case .line(let line) = $0 {
+                    return line.role == .radical
+                }
+                return false
+            })
+        else {
+            return XCTFail("Expected sqrt placeholder, glyph, and overline")
+        }
+
+        XCTAssertGreaterThan(glyphIndex, placeholderIndex)
+        XCTAssertGreaterThan(overlineIndex, placeholderIndex)
+    }
+
     func testSuperscriptEmitsBaseAndExponentTextElements() {
         let plan = engine.getPlan(from: .init(rawValue: "x^2"))
         let texts = plan.elements.compactMap { element -> String? in

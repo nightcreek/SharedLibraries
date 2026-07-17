@@ -4,11 +4,11 @@ import XCTest
 @testable import EMathicaFormulaDisplaySwiftUI
 
 final class FormulaReadOnlyRenderingTests: XCTestCase {
-    func testContentInspectorTreatsCursorOnlyDocumentAndMarkupAsEmpty() {
+    func testContentInspectorKeepsCursorOnlyDocumentNonEmptyButTreatsRawCursorMarkupAsEmpty() {
         let document = FormulaDisplayDocument(root: .sequence([.cursor(.anonymous)]))
         let markup = FormulaDisplayMarkup(rawValue: #"\cursor{}"#)
 
-        XCTAssertTrue(FormulaDisplayContentInspector.isEffectivelyEmpty(document))
+        XCTAssertFalse(FormulaDisplayContentInspector.isEffectivelyEmpty(document))
         XCTAssertTrue(FormulaDisplayContentInspector.isEffectivelyEmpty(markup))
     }
 

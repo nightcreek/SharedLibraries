@@ -152,11 +152,9 @@ enum FormulaReadOnlyDisplayResolver {
         }
 
         let metrics = makeMetrics(surface: surface, fontSize: fontSize, minHeight: minHeight)
-        let preferredOptions = FormulaDisplayOptions(
-            debugFramesEnabled: false,
-            cursorVisible: false,
-            renderingBackend: configuration.backend,
-            fontRole: configuration.fontRole
+        let preferredOptions = preferredOptions(
+            for: surface,
+            configuration: configuration
         )
 
         switch configuration.backend {
@@ -208,11 +206,9 @@ enum FormulaReadOnlyDisplayResolver {
         }
 
         let metrics = makeMetrics(surface: surface, fontSize: fontSize, minHeight: minHeight)
-        let preferredOptions = FormulaDisplayOptions(
-            debugFramesEnabled: false,
-            cursorVisible: false,
-            renderingBackend: configuration.backend,
-            fontRole: configuration.fontRole
+        let preferredOptions = preferredOptions(
+            for: surface,
+            configuration: configuration
         )
         let markup = EMathicaFormulaDisplayCore.FormulaDisplayMarkup(rawValue: String(rawValue))
 
@@ -288,6 +284,27 @@ enum FormulaReadOnlyDisplayResolver {
             .replacingOccurrences(of: #"\cursor"#, with: "")
             .replacingOccurrences(of: #"\placeholder{}"#, with: "")
             .replacingOccurrences(of: #"\placeholder"#, with: "")
+    }
+
+    private static func preferredOptions(
+        for surface: FormulaDisplaySurface,
+        configuration: FormulaRenderingConfiguration
+    ) -> FormulaDisplayOptions {
+        FormulaDisplayOptions(
+            debugFramesEnabled: false,
+            cursorVisible: cursorVisible(for: surface),
+            renderingBackend: configuration.backend,
+            fontRole: configuration.fontRole
+        )
+    }
+
+    private static func cursorVisible(for surface: FormulaDisplaySurface) -> Bool {
+        switch surface {
+        case .editorPreview:
+            return true
+        case .objectPanel, .inspector, .notebook, .export:
+            return false
+        }
     }
 }
 

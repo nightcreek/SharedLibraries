@@ -83,6 +83,8 @@ public enum FormulaDisplayDocumentSerializer {
             return #"\cursor{}"#
         case .placeholder:
             return #"\placeholder{}"#
+        case .insertionMarker:
+            return #"\eminsertion{}"#
         case .raw(let value):
             return value
         case .error(let node):

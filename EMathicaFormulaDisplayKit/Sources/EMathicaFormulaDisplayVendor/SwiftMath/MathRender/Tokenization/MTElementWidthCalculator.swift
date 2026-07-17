@@ -113,6 +113,8 @@ class MTElementWidthCalculator {
     func measureEditorSpacing(_ kind: MTEditorSpacingKind) -> CGFloat {
         guard let mathTable = font.mathTable else {
             switch kind {
+            case .zero:
+                return 0
             case .quad:
                 return font.fontSize
             case .mediumSpace:
@@ -123,6 +125,8 @@ class MTElementWidthCalculator {
         }
 
         switch kind {
+        case .zero:
+            return 0
         case .quad:
             return font.fontSize
         case .mediumSpace:

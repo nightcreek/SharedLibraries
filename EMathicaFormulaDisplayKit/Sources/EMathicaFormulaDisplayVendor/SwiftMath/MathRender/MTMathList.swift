@@ -328,6 +328,7 @@ func isNotBinaryOperator(_ prevNode:MTMathAtom?) -> Bool {
 }
 
 public enum MTEditorSpacingKind: Sendable, Equatable {
+    case zero
     case quad
     case mediumSpace
     case thickSpace

@@ -11,6 +11,7 @@ final class FormulaCursorStateTests: XCTestCase {
         let state = FormulaCursorState(insertionPoint: anchor)
 
         XCTAssertEqual(state.insertionPoint, anchor)
+        XCTAssertNil(state.insertionPoint.offset)
         XCTAssertNil(state.selectionEnd)
         XCTAssertNil(state.selectionState)
     }
@@ -35,5 +36,25 @@ final class FormulaCursorStateTests: XCTestCase {
             state.selectionState,
             FormulaSelectionState(startAnchor: start, endAnchor: end)
         )
+    }
+
+    func testCursorAnchorCanCarryStructuredOffsetIdentity() {
+        let anchor = FormulaCursorAnchor(
+            id: "cursor:field.argument@2",
+            rect: .init(origin: .init(x: 14, y: 3), size: .init(width: 1, height: 17)),
+            x: 14,
+            baseline: 15,
+            ascent: 7,
+            descent: 10,
+            offset: 2,
+            context: .radicalRadicand,
+            sourcePath: ["field.argument"],
+            fieldIdentity: "argument"
+        )
+
+        XCTAssertEqual(anchor.offset, 2)
+        XCTAssertEqual(anchor.fieldIdentity, "argument")
+        XCTAssertEqual(anchor.sourcePath, ["field.argument"])
+        XCTAssertEqual(anchor.context, .radicalRadicand)
     }
 }

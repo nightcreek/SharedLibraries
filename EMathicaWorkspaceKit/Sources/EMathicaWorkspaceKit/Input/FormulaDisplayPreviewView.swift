@@ -1,3 +1,4 @@
+import EMathicaMathInputCore
 import EMathicaFormulaDisplayCore
 import EMathicaFormulaDisplaySwiftUI
 import SwiftUI
@@ -12,6 +13,9 @@ public struct FormulaDisplayPreviewView: View {
     private let surface: FormulaDisplaySurface
     private let minHeight: CGFloat
     private let usesInternalScrollView: Bool
+    private let showsCursor: Bool
+    private let onTapCursor: ((EditorCursor) -> Void)?
+    private let projectionSnapshot: FormulaDisplayProjectionSnapshot?
 
     public init(
         rawValue: String,
@@ -19,7 +23,9 @@ public struct FormulaDisplayPreviewView: View {
         configuration: FormulaRenderingConfiguration = .default,
         surface: FormulaDisplaySurface = .editorPreview,
         minHeight: CGFloat = FormulaEditingDisplayView.minimumLayoutHeight,
-        usesInternalScrollView: Bool = true
+        usesInternalScrollView: Bool = true,
+        showsCursor: Bool = false,
+        onTapCursor: ((EditorCursor) -> Void)? = nil
     ) {
         self.document = nil
         self.rawValue = rawValue
@@ -28,21 +34,33 @@ public struct FormulaDisplayPreviewView: View {
         self.surface = surface
         self.minHeight = minHeight
         self.usesInternalScrollView = usesInternalScrollView
+        self.showsCursor = showsCursor
+        self.onTapCursor = onTapCursor
+        self.projectionSnapshot = nil
     }
 
     public init(
         inputState: FormulaInputState,
         configuration: FormulaRenderingConfiguration = .default,
         surface: FormulaDisplaySurface = .editorPreview,
-        usesInternalScrollView: Bool = true
+        usesInternalScrollView: Bool = true,
+        showsCursor: Bool = false,
+        onTapCursor: ((EditorCursor) -> Void)? = nil
     ) {
-        self.document = inputState.displayDocumentSnapshot
+        self.document = inputState.displayDocumentSnapshot(
+            includesInsertionMarkers: surface == .editorPreview && configuration.backend == .swiftMath
+        )
         self.rawValue = nil
         self.fallbackText = inputState.latexOutputSnapshot
         self.configuration = configuration
         self.surface = surface
         self.minHeight = FormulaEditingDisplayView.minimumLayoutHeight
         self.usesInternalScrollView = usesInternalScrollView
+        self.showsCursor = showsCursor
+        self.onTapCursor = onTapCursor
+        self.projectionSnapshot = surface == .editorPreview && configuration.backend == .swiftMath
+            ? inputState.displayProjectionSnapshot(includesInsertionMarkers: true)
+            : nil
     }
 
     public var body: some View {
@@ -60,28 +78,31 @@ public struct FormulaDisplayPreviewView: View {
             }
         case .formula(let resolvedDocument, let resolvedRawValue, let options, _):
             scrollWrappedIfNeeded {
+                let effectiveOptions = effectiveOptions(from: options)
                 Group {
                     if let resolvedDocument {
                         FormulaDisplayView(
                             document: resolvedDocument,
                             style: formulaStyle,
-                            options: options,
+                            options: effectiveOptions,
                             metrics: FormulaReadOnlyDisplayResolver.makeMetrics(
                                 surface: surface,
                                 fontSize: Self.previewFontSize,
                                 minHeight: minHeight
-                            )
+                            ),
+                            onTapInsertionID: tapInsertionHandler
                         )
                     } else {
                         FormulaDisplayView(
                             rawValue: resolvedRawValue,
                             style: formulaStyle,
-                            options: options,
+                            options: effectiveOptions,
                             metrics: FormulaReadOnlyDisplayResolver.makeMetrics(
                                 surface: surface,
                                 fontSize: Self.previewFontSize,
                                 minHeight: minHeight
-                            )
+                            ),
+                            onTapInsertionID: tapInsertionHandler
                         )
                     }
                 }
@@ -148,4 +169,21 @@ public struct FormulaDisplayPreviewView: View {
     }
 
     private static let previewFontSize: CGFloat = 22
+
+    private func effectiveOptions(from options: FormulaDisplayOptions) -> FormulaDisplayOptions {
+        .init(
+            debugFramesEnabled: options.debugFramesEnabled,
+            cursorVisible: options.cursorVisible && showsCursor,
+            renderingBackend: options.renderingBackend,
+            fontRole: options.fontRole
+        )
+    }
+
+    private var tapInsertionHandler: ((FormulaInsertionID) -> Void)? {
+        guard let onTapCursor, let projectionSnapshot else { return nil }
+        return { insertionID in
+            guard let cursor = projectionSnapshot.cursor(for: insertionID) else { return }
+            onTapCursor(cursor)
+        }
+    }
 }

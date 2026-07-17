@@ -36,6 +36,7 @@ package struct SwiftMathRenderedImage: Sendable, Equatable {
     package var size: CGSize
     package var baseline: Double
     package var cursorAnchor: SwiftMathCursorAnchor?
+    package var insertionAnchors: [SwiftMathInsertionAnchor]
     package var placeholderAnchors: [SwiftMathPlaceholderAnchor]
 }
 
@@ -51,6 +52,15 @@ public enum SwiftMathCursorContext: Sendable, Equatable {
 }
 
 package struct SwiftMathCursorAnchor: Sendable, Equatable {
+    package var rect: CGRect
+    package var x: Double
+    package var baseline: Double
+    package var ascent: Double
+    package var descent: Double
+    package var context: SwiftMathCursorContext
+}
+
+package struct SwiftMathInsertionAnchor: Sendable, Equatable {
     package var rect: CGRect
     package var x: Double
     package var baseline: Double
@@ -132,6 +142,16 @@ package enum SwiftMathReadOnlyRenderer {
                         context: $0.context
                     )
                 },
+                insertionAnchors: info?.insertionAnchors.map {
+                    SwiftMathInsertionAnchor(
+                        rect: $0.rect,
+                        x: Double($0.x),
+                        baseline: Double($0.baseline),
+                        ascent: Double($0.ascent),
+                        descent: Double($0.descent),
+                        context: $0.context
+                    )
+                } ?? [],
                 placeholderAnchors: info?.placeholders.map {
                     SwiftMathPlaceholderAnchor(
                         rect: $0.rect,

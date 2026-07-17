@@ -8,7 +8,8 @@ public struct FormulaDisplayView: View {
             snapshot: FormulaSwiftMathSnapshot?,
             error: FormulaSwiftMathRenderError?,
             showsCursor: Bool,
-            showsPlaceholderBounds: Bool
+            showsPlaceholderBounds: Bool,
+            onTapInsertionID: ((FormulaInsertionID) -> Void)?
         )
     }
 
@@ -50,7 +51,8 @@ public struct FormulaDisplayView: View {
         markup: FormulaDisplayMarkup,
         style: FormulaDisplayStyle = .default,
         options: FormulaDisplayOptions = .default,
-        metrics: FormulaLayoutMetrics = .default
+        metrics: FormulaLayoutMetrics = .default,
+        onTapInsertionID: ((FormulaInsertionID) -> Void)? = nil
     ) {
         self.style = style
         if FormulaDisplayContentInspector.isEffectivelyEmpty(markup) {
@@ -58,7 +60,8 @@ public struct FormulaDisplayView: View {
                 snapshot: nil,
                 error: nil,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
             return
         }
@@ -80,14 +83,16 @@ public struct FormulaDisplayView: View {
                 snapshot: snapshot,
                 error: nil,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
         case .swiftMathError(let error):
             self.storage = .swiftMath(
                 snapshot: nil,
                 error: error,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
         }
     }
@@ -96,7 +101,8 @@ public struct FormulaDisplayView: View {
         document: FormulaDisplayDocument,
         style: FormulaDisplayStyle = .default,
         options: FormulaDisplayOptions = .default,
-        metrics: FormulaLayoutMetrics = .default
+        metrics: FormulaLayoutMetrics = .default,
+        onTapInsertionID: ((FormulaInsertionID) -> Void)? = nil
     ) {
         self.style = style
         if FormulaDisplayContentInspector.isEffectivelyEmpty(document) {
@@ -104,7 +110,8 @@ public struct FormulaDisplayView: View {
                 snapshot: nil,
                 error: nil,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
             return
         }
@@ -126,14 +133,16 @@ public struct FormulaDisplayView: View {
                 snapshot: snapshot,
                 error: nil,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
         case .swiftMathError(let error):
             self.storage = .swiftMath(
                 snapshot: nil,
                 error: error,
                 showsCursor: options.cursorVisible,
-                showsPlaceholderBounds: options.debugFramesEnabled
+                showsPlaceholderBounds: options.debugFramesEnabled,
+                onTapInsertionID: onTapInsertionID
             )
         }
     }
@@ -142,13 +151,15 @@ public struct FormulaDisplayView: View {
         rawValue: String,
         style: FormulaDisplayStyle = .default,
         options: FormulaDisplayOptions = .default,
-        metrics: FormulaLayoutMetrics = .default
+        metrics: FormulaLayoutMetrics = .default,
+        onTapInsertionID: ((FormulaInsertionID) -> Void)? = nil
     ) {
         self.init(
             markup: FormulaDisplayMarkup(rawValue: rawValue),
             style: style,
             options: options,
-            metrics: metrics
+            metrics: metrics,
+            onTapInsertionID: onTapInsertionID
         )
     }
 
@@ -175,13 +186,14 @@ public struct FormulaDisplayView: View {
                 showsCursor: showsCursor,
                 showsDebugFrames: showsDebugFrames
             )
-        case .swiftMath(let snapshot, let error, let showsCursor, let showsPlaceholderBounds):
+        case .swiftMath(let snapshot, let error, let showsCursor, let showsPlaceholderBounds, let onTapInsertionID):
             FormulaSwiftMathSnapshotView(
                 snapshot: snapshot,
                 error: error,
                 style: style,
                 showsCursor: showsCursor,
-                showsPlaceholderBounds: showsPlaceholderBounds
+                showsPlaceholderBounds: showsPlaceholderBounds,
+                onTapInsertionID: onTapInsertionID
             )
         }
     }

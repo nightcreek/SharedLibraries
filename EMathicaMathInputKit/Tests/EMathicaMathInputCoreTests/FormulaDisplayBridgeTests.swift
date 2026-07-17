@@ -252,4 +252,124 @@ final class FormulaDisplayBridgeTests: XCTestCase {
         XCTAssertEqual(y, .sequence([.text("y", role: .symbol)]))
         XCTAssertEqual(range, .sequence([.text("t", role: .symbol)]))
     }
+
+    func testBridgeCanEmitStableInsertionMarkersForSequences() {
+        let formula = MathFormula.sequence([
+            .symbol("x"),
+            .operatorSymbol("+"),
+            .symbol("y")
+        ])
+
+        let document = FormulaDisplayBridge.document(
+            source: formula,
+            includesInsertionMarkers: true
+        )
+
+        guard case .sequence(let rootNodes) = document.root else {
+            return XCTFail("Expected root sequence")
+        }
+
+        XCTAssertEqual(rootNodes.count, 7)
+
+        let insertionTokens = rootNodes.compactMap { node -> FormulaDisplayInsertionToken? in
+            guard case .insertionMarker(let token) = node else { return nil }
+            return token
+        }
+
+        XCTAssertEqual(insertionTokens.count, 4)
+        XCTAssertEqual(
+            insertionTokens.map(\.id.stableStringValue),
+            [
+                "insertion:root@0#leading",
+                "insertion:root@1#interior",
+                "insertion:root@2#interior",
+                "insertion:root@3#trailing"
+            ]
+        )
+        XCTAssertTrue(insertionTokens.allSatisfy { $0.spacingPolicy == .zero })
+    }
+
+    func testProjectionSnapshotMapsInsertionIDsBackToEditorCursors() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .sqrt,
+                    fields: [
+                        .sequence([])
+                    ]
+                )
+            )
+        ])
+
+        let snapshot = FormulaDisplayProjection.displayProjectionSnapshot(
+            source: formula,
+            includesInsertionMarkers: true
+        )
+
+        let leadingID = FormulaInsertionID(
+            sourcePath: ["sequence[0]", "field.radicand"],
+            offset: 0,
+            affinity: .leading
+        )
+        let trailingID = FormulaInsertionID(
+            sourcePath: ["sequence[0]", "field.radicand"],
+            offset: 1,
+            affinity: .trailing
+        )
+
+        XCTAssertEqual(
+            snapshot.cursor(for: leadingID),
+            EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.radicand)],
+                offset: 0
+            )
+        )
+        XCTAssertEqual(
+            snapshot.cursor(for: trailingID),
+            EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.radicand)],
+                offset: 1
+            )
+        )
+        XCTAssertEqual(snapshot.insertionCursors[leadingID], snapshot.cursor(for: leadingID))
+        XCTAssertEqual(snapshot.document, FormulaDisplayBridge.document(source: formula, includesInsertionMarkers: true))
+    }
+
+    func testBridgeWrapsTemplateFieldsWithInsertionMarkers() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .sqrt,
+                    fields: [
+                        .symbol("x")
+                    ]
+                )
+            )
+        ])
+
+        let document = FormulaDisplayBridge.document(
+            source: formula,
+            includesInsertionMarkers: true
+        )
+
+        guard case .sequence(let rootNodes) = document.root else {
+            return XCTFail("Expected root sequence")
+        }
+        XCTAssertEqual(rootNodes.count, 3)
+        guard case .sqrt(let radicand) = rootNodes[1] else {
+            return XCTFail("Expected sqrt node")
+        }
+        guard case .sequence(let radicandNodes) = radicand else {
+            return XCTFail("Expected wrapped radicand sequence")
+        }
+        XCTAssertEqual(radicandNodes.count, 3)
+        guard case .insertionMarker(let leading) = radicandNodes[0] else {
+            return XCTFail("Expected leading insertion marker in radicand")
+        }
+        guard case .insertionMarker(let trailing) = radicandNodes[2] else {
+            return XCTFail("Expected trailing insertion marker in radicand")
+        }
+        XCTAssertEqual(leading.id.stableStringValue, "insertion:sequence[0]/field.radicand@0#leading")
+        XCTAssertEqual(trailing.id.stableStringValue, "insertion:sequence[0]/field.radicand@1#trailing")
+    }
 }

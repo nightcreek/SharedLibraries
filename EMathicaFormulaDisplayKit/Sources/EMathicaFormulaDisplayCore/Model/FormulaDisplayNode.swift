@@ -83,6 +83,7 @@ public indirect enum FormulaDisplayNode: Equatable, Sendable {
     case placeholder(FormulaDisplayPlaceholderToken)
     case raw(String)
     case error(FormulaDisplayErrorNode)
+    case insertionMarker(FormulaDisplayInsertionToken)
 }
 
 public extension FormulaDisplayNode {

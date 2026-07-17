@@ -10,16 +10,38 @@ import Foundation
 public enum FormulaDisplayProjection {
     public static func displayout(
         source: MathFormula,
-        cursor: FormulaDisplayCursorState? = nil
+        cursor: FormulaDisplayCursorState? = nil,
+        includesInsertionMarkers: Bool = false
     ) -> FormulaDisplayMarkup {
-        FormulaDisplayBridge.markup(source: source, cursor: cursor)
+        FormulaDisplayBridge.markup(
+            source: source,
+            cursor: cursor,
+            includesInsertionMarkers: includesInsertionMarkers
+        )
     }
 
     public static func displayDocument(
         source: MathFormula,
-        cursor: FormulaDisplayCursorState? = nil
+        cursor: FormulaDisplayCursorState? = nil,
+        includesInsertionMarkers: Bool = false
     ) -> FormulaDisplayDocument {
-        FormulaDisplayBridge.document(source: source, cursor: cursor)
+        FormulaDisplayBridge.document(
+            source: source,
+            cursor: cursor,
+            includesInsertionMarkers: includesInsertionMarkers
+        )
+    }
+
+    public static func displayProjectionSnapshot(
+        source: MathFormula,
+        cursor: FormulaDisplayCursorState? = nil,
+        includesInsertionMarkers: Bool = false
+    ) -> FormulaDisplayProjectionSnapshot {
+        FormulaDisplayBridge.projectionSnapshot(
+            source: source,
+            cursor: cursor,
+            includesInsertionMarkers: includesInsertionMarkers
+        )
     }
 
     @available(*, unavailable, message: "displayout must be derived from MathFormula plus external cursor state, not from EditorState.")

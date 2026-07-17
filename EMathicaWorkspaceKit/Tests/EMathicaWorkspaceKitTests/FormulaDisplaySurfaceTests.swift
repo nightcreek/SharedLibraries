@@ -46,6 +46,9 @@ final class FormulaDisplaySurfaceTests: XCTestCase {
         XCTAssertEqual(objectPanelOptions.renderingBackend, .swiftMath)
         XCTAssertEqual(inspectorOptions.renderingBackend, .swiftMath)
         XCTAssertEqual(editorPreviewOptions.renderingBackend, .swiftMath)
+        XCTAssertFalse(objectPanelOptions.cursorVisible)
+        XCTAssertFalse(inspectorOptions.cursorVisible)
+        XCTAssertTrue(editorPreviewOptions.cursorVisible)
     }
 
     func testInspectorSourceBuilderUsesInspectorSurface() {

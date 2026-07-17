@@ -13,8 +13,36 @@ public enum FormulaPlaceholderWidthPolicy: String, Equatable, Sendable {
 }
 
 public enum FormulaCursorSpacingPolicy: String, Equatable, Sendable {
+    case zero
     case medium
     case thick
+}
+
+public enum FormulaInsertionAffinity: String, Equatable, Sendable {
+    case leading
+    case interior
+    case trailing
+}
+
+public struct FormulaInsertionID: Equatable, Hashable, Sendable {
+    public var sourcePath: [String]
+    public var offset: Int
+    public var affinity: FormulaInsertionAffinity
+
+    public init(
+        sourcePath: [String],
+        offset: Int,
+        affinity: FormulaInsertionAffinity
+    ) {
+        self.sourcePath = sourcePath
+        self.offset = offset
+        self.affinity = affinity
+    }
+
+    public var stableStringValue: String {
+        let path = sourcePath.isEmpty ? "root" : sourcePath.joined(separator: "/")
+        return "insertion:\(path)@\(offset)#\(affinity.rawValue)"
+    }
 }
 
 public struct FormulaDisplayPlaceholderToken: Equatable, Sendable {
@@ -73,6 +101,31 @@ public extension FormulaDisplayCursorToken {
     }
 }
 
+public struct FormulaDisplayInsertionToken: Equatable, Sendable {
+    public var id: FormulaInsertionID
+    public var sourcePath: [String]
+    public var fieldIdentity: String?
+    public var offset: Int
+    public var affinity: FormulaInsertionAffinity
+    public var spacingPolicy: FormulaCursorSpacingPolicy
+
+    public init(
+        id: FormulaInsertionID,
+        sourcePath: [String],
+        fieldIdentity: String? = nil,
+        offset: Int,
+        affinity: FormulaInsertionAffinity,
+        spacingPolicy: FormulaCursorSpacingPolicy = .zero
+    ) {
+        self.id = id
+        self.sourcePath = sourcePath
+        self.fieldIdentity = fieldIdentity
+        self.offset = offset
+        self.affinity = affinity
+        self.spacingPolicy = spacingPolicy
+    }
+}
+
 public enum FormulaCursorContext: Equatable, Sendable {
     case inline
     case numerator
@@ -91,6 +144,7 @@ public struct FormulaCursorAnchor: Equatable, Sendable {
     public var baseline: Double
     public var ascent: Double
     public var descent: Double
+    public var offset: Int?
     public var context: FormulaCursorContext
     public var sourcePath: [String]
     public var fieldIdentity: String?
@@ -103,6 +157,7 @@ public struct FormulaCursorAnchor: Equatable, Sendable {
             baseline: baseline,
             ascent: rect.size.height + rect.origin.y - baseline,
             descent: baseline - rect.origin.y,
+            offset: nil,
             context: .inline,
             sourcePath: [],
             fieldIdentity: nil
@@ -123,6 +178,7 @@ public struct FormulaCursorAnchor: Equatable, Sendable {
             baseline: baseline,
             ascent: rect.size.height + rect.origin.y - baseline,
             descent: baseline - rect.origin.y,
+            offset: nil,
             context: context,
             sourcePath: sourcePath,
             fieldIdentity: fieldIdentity
@@ -136,6 +192,7 @@ public struct FormulaCursorAnchor: Equatable, Sendable {
         baseline: Double,
         ascent: Double,
         descent: Double,
+        offset: Int? = nil,
         context: FormulaCursorContext = .inline,
         sourcePath: [String] = [],
         fieldIdentity: String? = nil
@@ -146,13 +203,51 @@ public struct FormulaCursorAnchor: Equatable, Sendable {
         self.baseline = baseline
         self.ascent = ascent
         self.descent = descent
+        self.offset = offset
         self.context = context
         self.sourcePath = sourcePath
         self.fieldIdentity = fieldIdentity
     }
 }
 
-public struct FormulaPlaceholderAnchor: Equatable, Sendable {
+public struct FormulaInsertionAnchor: Identifiable, Equatable, Sendable {
+    public var id: FormulaInsertionID
+    public var rect: FormulaRect
+    public var x: Double
+    public var baseline: Double
+    public var ascent: Double
+    public var descent: Double
+    public var offset: Int
+    public var affinity: FormulaInsertionAffinity
+    public var sourcePath: [String]
+    public var fieldIdentity: String?
+
+    public init(
+        id: FormulaInsertionID,
+        rect: FormulaRect,
+        x: Double,
+        baseline: Double,
+        ascent: Double,
+        descent: Double,
+        offset: Int,
+        affinity: FormulaInsertionAffinity,
+        sourcePath: [String],
+        fieldIdentity: String?
+    ) {
+        self.id = id
+        self.rect = rect
+        self.x = x
+        self.baseline = baseline
+        self.ascent = ascent
+        self.descent = descent
+        self.offset = offset
+        self.affinity = affinity
+        self.sourcePath = sourcePath
+        self.fieldIdentity = fieldIdentity
+    }
+}
+
+public struct FormulaPlaceholderAnchor: Identifiable, Equatable, Sendable {
     public var id: String
     public var rect: FormulaRect
     public var baseline: Double

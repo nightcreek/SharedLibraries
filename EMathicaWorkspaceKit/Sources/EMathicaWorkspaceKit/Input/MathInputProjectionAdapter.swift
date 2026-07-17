@@ -13,17 +13,36 @@ public enum MathInputProjectionAdapter {
         formulaSnapshot(from: state.editorState)
     }
 
-    public static func displayMarkup(from state: FormulaInputState) -> EMathicaMathInputCore.FormulaDisplayMarkup {
+    public static func displayMarkup(
+        from state: FormulaInputState,
+        includesInsertionMarkers: Bool = false
+    ) -> EMathicaMathInputCore.FormulaDisplayMarkup {
         FormulaDisplayProjection.displayout(
             source: formulaSnapshot(from: state),
-            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor)
+            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor),
+            includesInsertionMarkers: includesInsertionMarkers
         )
     }
 
-    public static func displayDocument(from state: FormulaInputState) -> FormulaDisplayDocument {
+    public static func displayDocument(
+        from state: FormulaInputState,
+        includesInsertionMarkers: Bool = false
+    ) -> FormulaDisplayDocument {
         FormulaDisplayProjection.displayDocument(
             source: formulaSnapshot(from: state),
-            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor)
+            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor),
+            includesInsertionMarkers: includesInsertionMarkers
+        )
+    }
+
+    public static func displayProjectionSnapshot(
+        from state: FormulaInputState,
+        includesInsertionMarkers: Bool = false
+    ) -> FormulaDisplayProjectionSnapshot {
+        FormulaDisplayProjection.displayProjectionSnapshot(
+            source: formulaSnapshot(from: state),
+            cursor: FormulaDisplayCursorState(editorCursor: state.editorState.cursor),
+            includesInsertionMarkers: includesInsertionMarkers
         )
     }
 
@@ -55,6 +74,26 @@ public extension FormulaInputState {
 
     var displayDocumentSnapshot: FormulaDisplayDocument {
         MathInputProjectionAdapter.displayDocument(from: self)
+    }
+
+    var displayProjectionSnapshot: FormulaDisplayProjectionSnapshot {
+        MathInputProjectionAdapter.displayProjectionSnapshot(from: self)
+    }
+
+    func displayDocumentSnapshot(includesInsertionMarkers: Bool) -> FormulaDisplayDocument {
+        MathInputProjectionAdapter.displayDocument(
+            from: self,
+            includesInsertionMarkers: includesInsertionMarkers
+        )
+    }
+
+    func displayProjectionSnapshot(
+        includesInsertionMarkers: Bool
+    ) -> FormulaDisplayProjectionSnapshot {
+        MathInputProjectionAdapter.displayProjectionSnapshot(
+            from: self,
+            includesInsertionMarkers: includesInsertionMarkers
+        )
     }
 
     var latexOutputSnapshot: String {

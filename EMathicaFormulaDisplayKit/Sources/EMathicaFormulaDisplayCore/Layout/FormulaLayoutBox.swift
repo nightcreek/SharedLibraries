@@ -35,6 +35,7 @@ public struct FormulaLayoutBox: Equatable, Sendable {
         case piecewise
         case placeholder
         case cursor
+        case insertionMarker
         case raw
         case error
     }

@@ -5,6 +5,7 @@ final class SwiftMathCursorGeometryTests: XCTestCase {
     func testCursorAnchorExistsForInlineFormula() {
         let anchor = assertCursorAnchor(for: #"x+\cursor{}+y"#)
         XCTAssertEqual(anchor.context, .inline)
+        XCTAssertNil(anchor.offset)
     }
 
     func testCursorAnchorExistsInsideFraction() {
@@ -20,6 +21,16 @@ final class SwiftMathCursorGeometryTests: XCTestCase {
     func testCursorAnchorExistsInsideSuperscript() {
         let anchor = assertCursorAnchor(for: #"x^{\cursor{}}"#)
         XCTAssertEqual(anchor.context, .superscript)
+    }
+
+    func testCursorAnchorExistsInsideSubscript() {
+        let anchor = assertCursorAnchor(for: #"x_{\cursor{}}"#)
+        XCTAssertEqual(anchor.context, .subscriptField)
+    }
+
+    func testCursorAnchorExistsInsideDenominator() {
+        let anchor = assertCursorAnchor(for: #"\frac{x}{\cursor{}}"#)
+        XCTAssertEqual(anchor.context, .denominator)
     }
 
     func testCursorPlaceholderDoesNotBlowUpRadicalOrFractionHeight() {
@@ -67,5 +78,44 @@ final class SwiftMathCursorGeometryTests: XCTestCase {
             fatalError("Missing SwiftMath snapshot")
         }
         return snapshot
+    }
+
+    func testDocumentCursorAnchorCarriesStructuredOffsetAndFieldIdentity() {
+        let document = FormulaDisplayDocument(
+            root: .sequence([
+                .text("x", role: .symbol),
+                .cursor(
+                    .init(
+                        id: "cursor:field.argument@1",
+                        sourcePath: ["field.argument"],
+                        fieldIdentity: "argument",
+                        offset: 1,
+                        spacingPolicy: .medium
+                    )
+                )
+            ])
+        )
+
+        let resolved = FormulaDisplayContentResolver.resolve(
+            document: document,
+            options: .init(
+                debugFramesEnabled: false,
+                cursorVisible: true,
+                renderingBackend: .swiftMath,
+                fontRole: .standard
+            ),
+            metrics: .default,
+            foregroundColor: .init(red: 0, green: 0, blue: 0, alpha: 1)
+        )
+
+        guard case .swiftMath(let snapshot) = resolved,
+              let anchor = snapshot.cursorAnchor else {
+            return XCTFail("Expected cursor anchor from document path")
+        }
+
+        XCTAssertEqual(anchor.id, "cursor:field.argument@1")
+        XCTAssertEqual(anchor.sourcePath, ["field.argument"])
+        XCTAssertEqual(anchor.fieldIdentity, "argument")
+        XCTAssertEqual(anchor.offset, 1)
     }
 }

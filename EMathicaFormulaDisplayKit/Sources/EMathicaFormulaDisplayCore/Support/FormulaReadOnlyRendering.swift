@@ -10,6 +10,8 @@ public enum FormulaDisplayContentInspector {
         let sanitized = markup.rawValue
             .replacingOccurrences(of: #"\cursor{}"#, with: "")
             .replacingOccurrences(of: #"\cursor"#, with: "")
+            .replacingOccurrences(of: #"\eminsertion{}"#, with: "")
+            .replacingOccurrences(of: #"\eminsertion"#, with: "")
         return sanitized.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -23,9 +25,11 @@ public enum FormulaDisplayContentInspector {
             return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .error(let node):
             return node.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .cursor:
-            return true
-        case .operatorSymbol,
+            case .cursor:
+                return false
+            case .insertionMarker:
+                return true
+            case .operatorSymbol,
              .function,
              .fraction,
              .sqrt,
@@ -71,7 +75,24 @@ package struct FormulaSwiftMathSnapshot: Sendable, Equatable {
     package var size: FormulaSize
     package var baseline: Double
     package var cursorAnchor: FormulaCursorAnchor?
+    package var insertionAnchors: [FormulaInsertionAnchor]
     package var placeholderAnchors: [FormulaPlaceholderAnchor]
+
+    package init(
+        pngData: Data,
+        size: FormulaSize,
+        baseline: Double,
+        cursorAnchor: FormulaCursorAnchor? = nil,
+        insertionAnchors: [FormulaInsertionAnchor] = [],
+        placeholderAnchors: [FormulaPlaceholderAnchor] = []
+    ) {
+        self.pngData = pngData
+        self.size = size
+        self.baseline = baseline
+        self.cursorAnchor = cursorAnchor
+        self.insertionAnchors = insertionAnchors
+        self.placeholderAnchors = placeholderAnchors
+    }
 
     package init(
         pngData: Data,
@@ -80,11 +101,14 @@ package struct FormulaSwiftMathSnapshot: Sendable, Equatable {
         cursorAnchor: FormulaCursorAnchor? = nil,
         placeholderAnchors: [FormulaPlaceholderAnchor] = []
     ) {
-        self.pngData = pngData
-        self.size = size
-        self.baseline = baseline
-        self.cursorAnchor = cursorAnchor
-        self.placeholderAnchors = placeholderAnchors
+        self.init(
+            pngData: pngData,
+            size: size,
+            baseline: baseline,
+            cursorAnchor: cursorAnchor,
+            insertionAnchors: [],
+            placeholderAnchors: placeholderAnchors
+        )
     }
 }
 
@@ -134,6 +158,7 @@ package enum FormulaDisplayContentResolver {
                 latex: lowered.latex,
                 anchorLatex: lowered.anchorLatex,
                 placeholderTokens: lowered.placeholderTokens,
+                insertionTokens: lowered.insertionTokens,
                 cursorToken: lowered.cursorToken,
                 fontRole: options.fontRole,
                 metrics: metrics,
@@ -176,6 +201,7 @@ package enum FormulaDisplayContentResolver {
         latex: String,
         anchorLatex: String? = nil,
         placeholderTokens: [FormulaDisplayPlaceholderToken] = [],
+        insertionTokens: [FormulaDisplayInsertionToken] = [],
         cursorToken: FormulaDisplayCursorToken? = nil,
         fontRole: FormulaFontRole,
         metrics: FormulaLayoutMetrics,
@@ -216,6 +242,14 @@ package enum FormulaDisplayContentResolver {
                 fontSize: metrics.baseFontSize,
                 color: color
             )
+            let insertionAnchors = resolveInsertionAnchors(
+                visibleImage: image,
+                anchorLatex: anchorLatex,
+                insertionTokens: insertionTokens,
+                role: role,
+                fontSize: metrics.baseFontSize,
+                color: color
+            )
             return .swiftMath(
                 .init(
                     pngData: image.pngData,
@@ -232,11 +266,13 @@ package enum FormulaDisplayContentResolver {
                             baseline: $0.baseline,
                             ascent: $0.ascent,
                             descent: $0.descent,
+                            offset: cursorToken?.offset,
                             context: mapCursorContext($0.context),
                             sourcePath: cursorToken?.sourcePath ?? [],
                             fieldIdentity: cursorToken?.fieldIdentity
                         )
                     },
+                    insertionAnchors: insertionAnchors,
                     placeholderAnchors: placeholderAnchors
                 )
             )
@@ -338,22 +374,74 @@ package enum FormulaDisplayContentResolver {
             widthPolicy: token.widthPolicy
         )
     }
+
+    private static func resolveInsertionAnchors(
+        visibleImage: SwiftMathRenderedImage,
+        anchorLatex: String?,
+        insertionTokens: [FormulaDisplayInsertionToken],
+        role: SwiftMathFontRole,
+        fontSize: Double,
+        color: SwiftMathVendorColor
+    ) -> [FormulaInsertionAnchor] {
+        guard !insertionTokens.isEmpty else {
+            return []
+        }
+
+        let renderAnchors: [SwiftMathInsertionAnchor]
+        if let anchorLatex {
+            let trimmed = anchorLatex.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty,
+               case .success(let anchorImage) = SwiftMathReadOnlyRenderer.renderPNG(
+                    latex: trimmed,
+                    fontRole: role,
+                    fontSize: fontSize,
+                    foregroundColor: color,
+                    displayStyle: .display
+               ) {
+                renderAnchors = anchorImage.insertionAnchors
+            } else {
+                renderAnchors = visibleImage.insertionAnchors
+            }
+        } else {
+            renderAnchors = visibleImage.insertionAnchors
+        }
+        return zip(insertionTokens, renderAnchors).map { token, anchor in
+            FormulaInsertionAnchor(
+                id: token.id,
+                rect: .init(
+                    origin: .init(x: anchor.rect.origin.x, y: anchor.rect.origin.y),
+                    size: .init(width: anchor.rect.size.width, height: anchor.rect.size.height)
+                ),
+                x: anchor.x,
+                baseline: anchor.baseline,
+                ascent: anchor.ascent,
+                descent: anchor.descent,
+                offset: token.offset,
+                affinity: token.affinity,
+                sourcePath: token.sourcePath,
+                fieldIdentity: token.fieldIdentity
+            )
+        }
+    }
 }
 
 package struct FormulaDisplaySwiftMathLoweringResult: Sendable, Equatable {
     package var latex: String
     package var anchorLatex: String
     package var placeholderTokens: [FormulaDisplayPlaceholderToken]
+    package var insertionTokens: [FormulaDisplayInsertionToken]
     package var cursorToken: FormulaDisplayCursorToken?
 }
 
 package enum FormulaDisplaySwiftMathLowerer {
     package static func lower(_ document: FormulaDisplayDocument) -> FormulaDisplaySwiftMathLoweringResult {
         var placeholderTokens: [FormulaDisplayPlaceholderToken] = []
+        var insertionTokens: [FormulaDisplayInsertionToken] = []
         var cursorToken: FormulaDisplayCursorToken?
         let lowered = lower(
             document.root,
             placeholderTokens: &placeholderTokens,
+            insertionTokens: &insertionTokens,
             cursorToken: &cursorToken,
             syntheticPlaceholderCounter: 0
         )
@@ -361,6 +449,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             latex: lowered.visibleLatex,
             anchorLatex: lowered.anchorLatex,
             placeholderTokens: placeholderTokens,
+            insertionTokens: insertionTokens,
             cursorToken: cursorToken
         )
     }
@@ -368,6 +457,7 @@ package enum FormulaDisplaySwiftMathLowerer {
     private static func lower(
         _ node: FormulaDisplayNode,
         placeholderTokens: inout [FormulaDisplayPlaceholderToken],
+        insertionTokens: inout [FormulaDisplayInsertionToken],
         cursorToken: inout FormulaDisplayCursorToken?,
         syntheticPlaceholderCounter: Int
     ) -> (visibleLatex: String, anchorLatex: String, nextSyntheticCounter: Int) {
@@ -378,6 +468,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let lowered = lower(
                     child,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -398,6 +489,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 name: name,
                 arguments: arguments,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -405,6 +497,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let numeratorLowered = lower(
                 numerator,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -412,6 +505,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let denominatorLowered = lower(
                 denominator,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -425,6 +519,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 radicand,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -437,6 +532,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let indexLowered = lower(
                 index,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -444,6 +540,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let radicandLowered = lower(
                 radicand,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -456,6 +553,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let baseLowered = lower(
                 base,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -463,6 +561,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let exponentLowered = lower(
                 exponent,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -475,6 +574,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let baseLowered = lower(
                 base,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -482,6 +582,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let subscriptLowered = lower(
                 subscriptNode,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -494,6 +595,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let baseLowered = lower(
                 base,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -504,6 +606,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let superscriptLowered = lower(
                     superscriptNode,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -515,6 +618,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let subscriptLowered = lower(
                     subscriptNode,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -527,6 +631,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 content,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -535,6 +640,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 content,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -543,6 +649,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 content,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -555,6 +662,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 content,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -563,6 +671,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 content,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -584,6 +693,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let body = lowerGridRows(
                 rows,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -596,6 +706,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let body = lowerGridRows(
                 rows,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -608,6 +719,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let variableLowered = lower(
                 variable,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -615,6 +727,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let targetLowered = lower(
                 target,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -622,6 +735,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let bodyLowered = lower(
                 body,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -634,6 +748,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let variableLowered = lower(
                 variable,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -641,6 +756,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowerBoundLowered = lower(
                 lowerBound,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -648,6 +764,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let upperBoundLowered = lower(
                 upperBound,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -655,6 +772,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let bodyLowered = lower(
                 body,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -668,6 +786,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowerBoundLowered = lower(
                 lowerBound,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -675,6 +794,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let upperBoundLowered = lower(
                 upperBound,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -682,6 +802,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let integrandLowered = lower(
                 integrand,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -689,6 +810,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let variableLowered = lower(
                 variable,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -701,6 +823,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let xLowered = lower(
                 x,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -708,6 +831,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let yLowered = lower(
                 y,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -717,6 +841,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let rangeLowered = lower(
                     range,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -745,6 +870,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let xLowered = lower(
                 x,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -752,6 +878,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let yLowered = lower(
                 y,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -759,6 +886,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let zLowered = lower(
                 z,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -775,6 +903,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let expressionLowered = lower(
                     row.expression,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -782,6 +911,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let conditionLowered = lower(
                     row.condition,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -801,6 +931,8 @@ package enum FormulaDisplaySwiftMathLowerer {
         case .cursor(let token):
             cursorToken = token
             switch token.spacingPolicy {
+            case .zero:
+                return (#"\eminsertion{}"#, #"\eminsertion{}"#, counter)
             case .medium:
                 return (#"\emcursor{}"#, #"\emcursor{}"#, counter)
             case .thick:
@@ -809,6 +941,9 @@ package enum FormulaDisplaySwiftMathLowerer {
         case .placeholder(let token):
             placeholderTokens.append(token)
             return (#"\quad"#, #"\emplaceholder{}"#, counter)
+        case .insertionMarker(let token):
+            insertionTokens.append(token)
+            return ("", #"\eminsertion{}"#, counter)
         case .raw(let value):
             return (value, value, counter)
         case .error(let node):
@@ -820,6 +955,7 @@ package enum FormulaDisplaySwiftMathLowerer {
         name: String,
         arguments: [FormulaDisplayNode],
         placeholderTokens: inout [FormulaDisplayPlaceholderToken],
+        insertionTokens: inout [FormulaDisplayInsertionToken],
         cursorToken: inout FormulaDisplayCursorToken?,
         syntheticPlaceholderCounter: Int
     ) -> (visibleLatex: String, anchorLatex: String, nextSyntheticCounter: Int) {
@@ -833,6 +969,7 @@ package enum FormulaDisplaySwiftMathLowerer {
             let lowered = lower(
                 argument,
                 placeholderTokens: &placeholderTokens,
+                insertionTokens: &insertionTokens,
                 cursorToken: &cursorToken,
                 syntheticPlaceholderCounter: counter
             )
@@ -914,6 +1051,7 @@ package enum FormulaDisplaySwiftMathLowerer {
     private static func lowerGridRows(
         _ rows: [FormulaGridRow],
         placeholderTokens: inout [FormulaDisplayPlaceholderToken],
+        insertionTokens: inout [FormulaDisplayInsertionToken],
         cursorToken: inout FormulaDisplayCursorToken?,
         syntheticPlaceholderCounter: Int
     ) -> (visibleLatex: String, anchorLatex: String, nextSyntheticCounter: Int) {
@@ -923,6 +1061,7 @@ package enum FormulaDisplaySwiftMathLowerer {
                 let lowered = lower(
                     cell,
                     placeholderTokens: &placeholderTokens,
+                    insertionTokens: &insertionTokens,
                     cursorToken: &cursorToken,
                     syntheticPlaceholderCounter: counter
                 )
@@ -935,8 +1074,8 @@ package enum FormulaDisplaySwiftMathLowerer {
             )
         }
         return (
-            renderedRows.map(\.0).joined(separator: #"\\\\"#),
-            renderedRows.map(\.1).joined(separator: #"\\\\"#),
+            renderedRows.map { $0.0 }.joined(separator: #"\\\\"#),
+            renderedRows.map { $0.1 }.joined(separator: #"\\\\"#),
             counter
         )
     }

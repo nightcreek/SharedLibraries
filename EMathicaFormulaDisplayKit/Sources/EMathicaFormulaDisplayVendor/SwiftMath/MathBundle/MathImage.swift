@@ -72,6 +72,31 @@ extension MathImage {
         }
     }
 
+    public struct InsertionLayoutInfo {
+        public var rect: CGRect
+        public var x: CGFloat
+        public var baseline: CGFloat
+        public var ascent: CGFloat
+        public var descent: CGFloat
+        public var context: SwiftMathCursorContext
+
+        public init(
+            rect: CGRect,
+            x: CGFloat,
+            baseline: CGFloat,
+            ascent: CGFloat,
+            descent: CGFloat,
+            context: SwiftMathCursorContext
+        ) {
+            self.rect = rect
+            self.x = x
+            self.baseline = baseline
+            self.ascent = ascent
+            self.descent = descent
+            self.context = context
+        }
+    }
+
     public struct PlaceholderLayoutInfo {
         public var rect: CGRect
         public var baseline: CGFloat
@@ -108,17 +133,20 @@ extension MathImage {
         public var ascent: CGFloat = 0
         public var descent: CGFloat = 0
         public var cursor: CursorLayoutInfo?
+        public var insertionAnchors: [InsertionLayoutInfo]
         public var placeholders: [PlaceholderLayoutInfo]
 
         public init(
             ascent: CGFloat,
             descent: CGFloat,
             cursor: CursorLayoutInfo? = nil,
+            insertionAnchors: [InsertionLayoutInfo] = [],
             placeholders: [PlaceholderLayoutInfo] = []
         ) {
             self.ascent = ascent
             self.descent = descent
             self.cursor = cursor
+            self.insertionAnchors = insertionAnchors
             self.placeholders = placeholders
         }
     }
@@ -154,6 +182,7 @@ extension MathImage {
         let size = intrinsicContentSize.regularized
         layoutImage(size: size, displayList: displayList)
         let cursor = findCursorAnchor(in: displayList, accumulatedOrigin: .zero, context: .inline)
+        let insertionAnchors = findInsertionAnchors(in: displayList, accumulatedOrigin: .zero, context: .inline)
         let placeholders = findPlaceholderAnchors(in: displayList, accumulatedOrigin: .zero, context: .inline)
         
         #if os(iOS) || os(visionOS)
@@ -164,7 +193,7 @@ extension MathImage {
                 displayList.draw(rendererContext.cgContext)
                 rendererContext.cgContext.restoreGState()
             }
-            return (nil, image, LayoutInfo(ascent: displayList.ascent, descent: displayList.descent, cursor: cursor, placeholders: placeholders))
+            return (nil, image, LayoutInfo(ascent: displayList.ascent, descent: displayList.descent, cursor: cursor, insertionAnchors: insertionAnchors, placeholders: placeholders))
         #endif
         #if os(macOS)
             let image = NSImage(size: size, flipped: false) { bounds in
@@ -174,7 +203,7 @@ extension MathImage {
                 context.restoreGState()
                 return true
             }
-            return (nil, image, LayoutInfo(ascent: displayList.ascent, descent: displayList.descent, cursor: cursor, placeholders: placeholders))
+            return (nil, image, LayoutInfo(ascent: displayList.ascent, descent: displayList.descent, cursor: cursor, insertionAnchors: insertionAnchors, placeholders: placeholders))
         #endif
     }
 
@@ -184,6 +213,9 @@ extension MathImage {
         context: SwiftMathCursorContext
     ) -> CursorLayoutInfo? {
         if let cursor = display as? MTCursorDisplay {
+            guard cursor.anchorWidth > 0 else {
+                return nil
+            }
             let rect = cursor.anchorBounds(at: accumulatedOrigin)
             return CursorLayoutInfo(
                 rect: rect,
@@ -298,6 +330,87 @@ extension MathImage {
         }
 
         return nil
+    }
+
+    private func findInsertionAnchors(
+        in display: MTDisplay,
+        accumulatedOrigin: CGPoint,
+        context: SwiftMathCursorContext
+    ) -> [InsertionLayoutInfo] {
+        if let cursor = display as? MTCursorDisplay {
+            guard cursor.anchorWidth <= 0 else {
+                return []
+            }
+            return [
+                InsertionLayoutInfo(
+                    rect: cursor.anchorBounds(at: accumulatedOrigin),
+                    x: accumulatedOrigin.x + cursor.position.x,
+                    baseline: accumulatedOrigin.y + cursor.position.y,
+                    ascent: cursor.ascent,
+                    descent: cursor.descent,
+                    context: context
+                )
+            ]
+        }
+
+        if let list = display as? MTMathListDisplay {
+            let childOrigin = CGPoint(
+                x: accumulatedOrigin.x + list.position.x,
+                y: accumulatedOrigin.y + list.position.y
+            )
+            let childContext: SwiftMathCursorContext
+            switch list.type {
+            case .superscript:
+                childContext = .superscript
+            case .ssubscript:
+                childContext = .subscriptField
+            case .regular:
+                childContext = context
+            }
+            return list.subDisplays.flatMap {
+                findInsertionAnchors(in: $0, accumulatedOrigin: childOrigin, context: childContext)
+            }
+        }
+
+        if let fraction = display as? MTFractionDisplay {
+            return (fraction.numerator.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .numerator)
+            } ?? [])
+            + (fraction.denominator.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .denominator)
+            } ?? [])
+        }
+
+        if let radical = display as? MTRadicalDisplay {
+            return (radical.degree.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .radicalDegree)
+            } ?? [])
+            + (radical.radicand.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .radicalRadicand)
+            } ?? [])
+        }
+
+        if let limits = display as? MTLargeOpLimitsDisplay {
+            return (limits.upperLimit.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .superscript)
+            } ?? [])
+            + (limits.lowerLimit.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: .subscriptField)
+            } ?? [])
+            + (limits.nucleus.map {
+                findInsertionAnchors(in: $0, accumulatedOrigin: accumulatedOrigin, context: context)
+            } ?? [])
+        }
+
+        if let line = display as? MTLineDisplay, let inner = line.inner {
+            return findInsertionAnchors(in: inner, accumulatedOrigin: accumulatedOrigin, context: context)
+        }
+
+        if let accent = display as? MTAccentDisplay, let accentee = accent.accentee {
+            return findInsertionAnchors(in: accentee, accumulatedOrigin: accumulatedOrigin, context: context)
+        }
+
+        return []
     }
 
     private func findPlaceholderAnchors(

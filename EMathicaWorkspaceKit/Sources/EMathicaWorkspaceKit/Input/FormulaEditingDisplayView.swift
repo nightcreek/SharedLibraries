@@ -33,7 +33,9 @@ public struct FormulaEditingDisplayView: View {
                 inputState: inputState,
                 configuration: configuration,
                 surface: .editorPreview,
-                usesInternalScrollView: false
+                usesInternalScrollView: false,
+                showsCursor: isFocused,
+                onTapCursor: onTapCursor
             )
             .overlay(alignment: .topLeading) {
                 FormulaEditorView(
@@ -45,6 +47,7 @@ public struct FormulaEditingDisplayView: View {
                     onKeyboardAction: onKeyboardAction
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .allowsHitTesting(false)
             }
         }
         .frame(minHeight: Self.minimumLayoutHeight, alignment: .topLeading)

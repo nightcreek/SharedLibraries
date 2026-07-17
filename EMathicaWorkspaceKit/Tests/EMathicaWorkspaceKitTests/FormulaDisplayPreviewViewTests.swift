@@ -70,6 +70,47 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         XCTAssertTrue(state.displayDocumentSnapshot == MathInputProjectionAdapter.displayDocument(from: state))
     }
 
+    func testPreviewBridgeProjectionSnapshotPreservesInsertionCursorMap() {
+        let state = FormulaInputState(
+            editorState: EditorState(
+                root: .sequence([
+                    .template(
+                        .init(
+                            kind: .sqrt,
+                            fields: [
+                                TemplateField(
+                                    id: .radicand,
+                                    node: .sequence([])
+                                )
+                            ]
+                        )
+                    )
+                ]),
+                cursor: EditorCursor(
+                    path: [.sequenceIndex(0), .templateField(.radicand)],
+                    offset: 1
+                ),
+                selection: nil
+            )
+        )
+
+        let snapshot = state.displayProjectionSnapshot(includesInsertionMarkers: true)
+
+        XCTAssertEqual(
+            snapshot.cursor(
+                for: FormulaInsertionID(
+                    sourcePath: ["sequence[0]", "field.radicand"],
+                    offset: 1,
+                    affinity: FormulaInsertionAffinity.trailing
+                )
+            ),
+            EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.radicand)],
+                offset: 1
+            )
+        )
+    }
+
     func testWorkspaceKitCanImportFormulaDisplaySwiftUIThroughPreviewBridge() {
         let view = FormulaDisplayPreviewView(rawValue: #"\frac{x}{\placeholder{}}"#)
         XCTAssertNotNil(view)

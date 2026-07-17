@@ -274,12 +274,13 @@ class MTAtomTokenizer {
         let fontDescent = CTFontGetDescent(font.ctFont)
         let ascent = max(xHeight, font.fontSize * 0.45, 1)
         let descent = max(fontDescent * 0.5, font.fontSize * 0.12, 1)
+        let anchorWidth = spacingKind == .zero ? 0 : cursorStrokeWidth
         let display = MTCursorDisplay(
             position: .zero,
             range: atom.indexRange,
             ascent: ascent,
             descent: descent,
-            anchorWidth: cursorStrokeWidth
+            anchorWidth: anchorWidth
         )
 
         return MTBreakableElement(

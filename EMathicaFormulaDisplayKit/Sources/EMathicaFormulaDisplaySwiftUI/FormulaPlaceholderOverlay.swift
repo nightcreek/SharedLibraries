@@ -2,9 +2,23 @@ import EMathicaFormulaDisplayCore
 import SwiftUI
 
 struct FormulaPlaceholderOverlay: View {
-    let anchor: FormulaPlaceholderAnchor
+    let rect: CGRect
     let strokeColor: Color
     let fillColor: Color
+
+    init(rect: CGRect, strokeColor: Color, fillColor: Color) {
+        self.rect = rect
+        self.strokeColor = strokeColor
+        self.fillColor = fillColor
+    }
+
+    init(anchor: FormulaPlaceholderAnchor, strokeColor: Color, fillColor: Color) {
+        self.init(
+            rect: Self.overlayRect(for: anchor),
+            strokeColor: strokeColor,
+            fillColor: fillColor
+        )
+    }
 
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -13,12 +27,12 @@ struct FormulaPlaceholderOverlay: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(strokeColor, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
             )
-            .frame(width: overlayRect.width, height: overlayRect.height)
-            .offset(x: overlayRect.minX, y: overlayRect.minY)
+            .frame(width: rect.width, height: rect.height)
+            .offset(x: rect.minX, y: rect.minY)
             .accessibilityHidden(true)
     }
 
-    private var overlayRect: CGRect {
+    static func overlayRect(for anchor: FormulaPlaceholderAnchor) -> CGRect {
         let minHeight = max(anchor.ascent + anchor.descent, 10)
         let width = max(anchor.rect.size.width, 8)
         return CGRect(
@@ -30,6 +44,6 @@ struct FormulaPlaceholderOverlay: View {
     }
 
     private var cornerRadius: CGFloat {
-        max(min(overlayRect.height * 0.18, 6), 3)
+        max(min(rect.height * 0.18, 6), 3)
     }
 }

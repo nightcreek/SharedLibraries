@@ -56,6 +56,7 @@ public struct FormulaRenderPlanBuilder: Sendable {
             placeholderRects: box.kind == .placeholder ? [absoluteBounds] : [],
             hitRegions: [FormulaHitRegion(id: box.id, frame: absoluteBounds, kind: hitRegionKind(for: box.kind))]
         )
+        var trailingElements: [FormulaRenderElement] = []
 
         switch box.kind {
         case .text, .operatorSymbol, .function, .raw, .error:
@@ -99,7 +100,7 @@ public struct FormulaRenderPlanBuilder: Sendable {
                     radicandBounds: radicandBounds,
                     metrics: context.metrics
                 )
-                result.elements.append(
+                trailingElements.append(
                     .text(
                         .init(
                             id: box.id,
@@ -109,7 +110,7 @@ public struct FormulaRenderPlanBuilder: Sendable {
                         )
                     )
                 )
-                result.elements.append(
+                trailingElements.append(
                     .line(
                         .init(
                             id: box.id,
@@ -139,6 +140,8 @@ public struct FormulaRenderPlanBuilder: Sendable {
             if context.options.cursorVisible {
                 result.elements.append(.cursor(.init(id: box.id, frame: absoluteBounds)))
             }
+        case .insertionMarker:
+            break
         case .placeholder:
             result.elements.append(.placeholder(.init(id: box.id, frame: absoluteBounds)))
         case .sequence, .superscript, .subscript, .scriptPair:
@@ -152,6 +155,8 @@ public struct FormulaRenderPlanBuilder: Sendable {
             )
             result.merge(buildElements(from: child.box, offset: childOffset, context: context))
         }
+
+        result.elements.append(contentsOf: trailingElements)
 
         return result
     }
@@ -347,6 +352,8 @@ public struct FormulaRenderPlanBuilder: Sendable {
     private func hitRegionKind(for kind: FormulaLayoutBox.Kind) -> FormulaHitRegionKind {
         switch kind {
         case .cursor:
+            return .cursor
+        case .insertionMarker:
             return .cursor
         case .placeholder:
             return .placeholder

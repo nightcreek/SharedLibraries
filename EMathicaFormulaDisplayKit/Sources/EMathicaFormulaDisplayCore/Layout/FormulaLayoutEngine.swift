@@ -60,6 +60,8 @@ public struct FormulaLayoutEngine: Sendable {
             return layoutPiecewise(rows: rows, metrics: metrics, path: path)
         case .cursor:
             return layoutCursor(metrics: metrics, path: path)
+        case .insertionMarker:
+            return layoutCursor(metrics: metrics, path: path)
         case .placeholder:
             return layoutPlaceholder(metrics: metrics, path: path)
         case .raw(let value):

@@ -29,6 +29,47 @@ final class EditorPreviewFormulaBackendTests: XCTestCase {
 
         XCTAssertEqual(options.renderingBackend, .swiftMath)
         XCTAssertEqual(fallbackReason, .unsupportedCommand)
+        XCTAssertTrue(options.cursorVisible)
+    }
+
+    func testEditorPreviewSurfaceEnablesCursorWhileReadOnlySurfacesDoNot() {
+        let editorResolved = FormulaReadOnlyDisplayResolver.resolveUncached(
+            surface: .editorPreview,
+            rawValue: #"x+\cursor{}+y"#,
+            fallbackText: "x+y",
+            fontSize: 22,
+            minHeight: 44,
+            allowsMultiline: false,
+            configuration: .init(backend: .swiftMath, fontRole: .standard)
+        )
+        let objectPanelResolved = FormulaReadOnlyDisplayResolver.resolveUncached(
+            surface: .objectPanel,
+            rawValue: #"x+\cursor{}+y"#,
+            fallbackText: "x+y",
+            fontSize: 13,
+            minHeight: 18,
+            allowsMultiline: false,
+            configuration: .init(backend: .swiftMath, fontRole: .standard)
+        )
+        let inspectorResolved = FormulaReadOnlyDisplayResolver.resolveUncached(
+            surface: .inspector,
+            rawValue: #"x+\cursor{}+y"#,
+            fallbackText: "x+y",
+            fontSize: 13,
+            minHeight: 18,
+            allowsMultiline: false,
+            configuration: .init(backend: .swiftMath, fontRole: .standard)
+        )
+
+        guard case .formula(_, _, let editorOptions, _) = editorResolved,
+              case .formula(_, _, let objectPanelOptions, _) = objectPanelResolved,
+              case .formula(_, _, let inspectorOptions, _) = inspectorResolved else {
+            return XCTFail("Expected formula resolution for all surfaces")
+        }
+
+        XCTAssertTrue(editorOptions.cursorVisible)
+        XCTAssertFalse(objectPanelOptions.cursorVisible)
+        XCTAssertFalse(inspectorOptions.cursorVisible)
     }
 
     func testRuntimeOverrideDoesNotMutateDocumentOrInputState() throws {
