@@ -9,9 +9,9 @@ public struct FormulaKeyboardMetadata: FormulaKeyboardPrimitive {
         id: FormulaKeyboardIdentifier,
         name: String,
         version: FormulaKeyboardVersion
-    ) {
+    ) throws {
         self.id = id
-        self.name = name
+        self.name = try FormulaKeyboardIdentifier.normalizeIdentifier(name)
         self.version = version
     }
 }

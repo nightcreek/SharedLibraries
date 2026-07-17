@@ -89,3 +89,39 @@ The first Core layer needs to remain dependency-free, serializable, and stable b
 
 - Core depends only on Foundation.
 - Layout, rendering, actions, host behavior, and keyboard definitions are deferred to later phases.
+
+## ADR-0006 — Keyboard Definition is immutable
+
+- Status: Accepted
+- Date: 2026-07-17
+
+### Context
+
+The static definition model must remain deterministic, serializable, and safe to validate before any runtime behavior is introduced.
+
+### Decision
+
+Keyboard definition types are immutable value types.
+
+### Consequences
+
+- Definition instances can be encoded, compared, and tested without runtime state.
+- Runtime behavior is layered on top of immutable definitions instead of mutating them in place.
+
+## ADR-0007 — Keyboard Intent expresses semantics only
+
+- Status: Accepted
+- Date: 2026-07-17
+
+### Context
+
+The definition layer must describe user intent without executing behavior or depending on editor implementations.
+
+### Decision
+
+Keyboard intent models express semantics only.
+
+### Consequences
+
+- Core intent types do not import MathInput, Workspace, or app code.
+- Execution and adaptation stay in later runtime layers.

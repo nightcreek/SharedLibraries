@@ -1,6 +1,6 @@
 import Foundation
 
-public struct FormulaKeyIdentifier: FormulaKeyboardPrimitive {
+public struct FormulaKeyboardSymbol: FormulaKeyboardPrimitive {
     public let rawValue: String
 
     public init(rawValue: String) throws {
