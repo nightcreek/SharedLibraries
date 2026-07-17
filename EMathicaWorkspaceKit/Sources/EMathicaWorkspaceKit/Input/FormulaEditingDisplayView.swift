@@ -49,6 +49,15 @@ public struct FormulaEditingDisplayView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .allowsHitTesting(false)
             }
+#if canImport(UIKit)
+            .background(
+                HardwareKeyboardCaptureView(
+                    isFocused: isFocused,
+                    onAction: onKeyboardAction
+                )
+                .allowsHitTesting(false)
+            )
+#endif
         }
         .frame(minHeight: Self.minimumLayoutHeight, alignment: .topLeading)
     }

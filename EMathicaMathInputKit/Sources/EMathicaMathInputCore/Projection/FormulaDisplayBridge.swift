@@ -373,15 +373,68 @@ public enum FormulaDisplayBridge {
             )
         }
 
-        return .sequence(
-            buildSequence(
-                [formula],
+        switch formula {
+        case .sequence(let items):
+            if items.isEmpty {
+                var nodes = [FormulaDisplayNode]()
+                nodes.append(
+                    insertionToken(
+                        path: path,
+                        offset: 0,
+                        totalCount: 1,
+                        insertionCursors: &insertionCursors
+                    )
+                )
+                if shouldInsertCursor(path: path, offset: 0, cursor: cursor) {
+                    nodes.append(cursorToken(path: path, offset: 0))
+                } else {
+                    nodes.append(placeholderToken(path: path))
+                }
+                if shouldInsertCursor(path: path, offset: 1, cursor: cursor) {
+                    nodes.append(cursorToken(path: path, offset: 1))
+                }
+                nodes.append(
+                    insertionToken(
+                        path: path,
+                        offset: 1,
+                        totalCount: 1,
+                        insertionCursors: &insertionCursors
+                    )
+                )
+                return .sequence(nodes)
+            }
+            return buildNode(
+                formula,
                 path: path,
                 cursor: cursor,
                 includesInsertionMarkers: true,
                 insertionCursors: &insertionCursors
             )
-        )
+        default:
+            return .sequence(
+                [
+                    insertionToken(
+                        path: path,
+                        offset: 0,
+                        totalCount: 1,
+                        insertionCursors: &insertionCursors
+                    ),
+                    buildNode(
+                        formula,
+                        path: path,
+                        cursor: cursor,
+                        includesInsertionMarkers: true,
+                        insertionCursors: &insertionCursors
+                    ),
+                    insertionToken(
+                        path: path,
+                        offset: 1,
+                        totalCount: 1,
+                        insertionCursors: &insertionCursors
+                    )
+                ]
+            )
+        }
     }
 
     private static func shouldInsertCursor(

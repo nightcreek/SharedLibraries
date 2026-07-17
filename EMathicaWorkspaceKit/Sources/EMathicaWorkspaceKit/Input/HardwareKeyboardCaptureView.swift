@@ -62,16 +62,12 @@ public class KeyCaptureView: UIView {
 
 public enum KeyboardHardwareMapper {
     public static func map(key: UIKey) -> KeyboardAction? {
-        let action = map(
+        map(
             keyCode: key.keyCode,
             characters: key.characters,
             charactersIgnoringModifiers: key.charactersIgnoringModifiers,
             modifierFlags: key.modifierFlags
         )
-#if DEBUG
-        debugLog(key: key, action: action)
-#endif
-        return action
     }
 
     public static func map(
@@ -100,11 +96,5 @@ public enum KeyboardHardwareMapper {
         return modifiers
     }
 
-#if DEBUG
-    private static func debugLog(key: UIKey, action: KeyboardAction?) {
-        let hasShift = key.modifierFlags.contains(.shift)
-        print("[HardwareKeyboard] keyCode=\(key.keyCode.rawValue) characters=\(key.characters.debugDescription) charactersIgnoringModifiers=\(key.charactersIgnoringModifiers.debugDescription) shift=\(hasShift) action=\(String(describing: action))")
-    }
-#endif
 }
 #endif

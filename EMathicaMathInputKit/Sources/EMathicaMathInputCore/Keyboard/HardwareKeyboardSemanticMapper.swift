@@ -76,6 +76,9 @@ public struct HardwareKeyboardSemanticMapper: Sendable {
         if value == "^" {
             return .input(.template(.superscript))
         }
+        if value == "_" {
+            return .input(.template(.subscript))
+        }
         if value.isEmpty {
             return nil
         }
@@ -89,4 +92,3 @@ public struct HardwareKeyboardSemanticMapper: Sendable {
         return .input(.char(value))
     }
 }
-

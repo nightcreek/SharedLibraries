@@ -335,6 +335,203 @@ final class FormulaDisplayBridgeTests: XCTestCase {
         XCTAssertEqual(snapshot.document, FormulaDisplayBridge.document(source: formula, includesInsertionMarkers: true))
     }
 
+    func testProjectionSnapshotMapsNestedSequenceFieldInsertionToValidEditorCursor() {
+        let formula = MathFormula.sequence([
+            .template(
+                MathTemplateFormula(
+                    kind: .parametric2D,
+                    fields: [
+                        .sequence([.symbol("x")]),
+                        .sequence([.symbol("y")]),
+                        .sequence([.symbol("y")])
+                    ]
+                )
+            )
+        ])
+        let editorState = EditorState(
+            root: .sequence([
+                .template(
+                    TemplateNode(
+                        kind: .parametricEquation2D,
+                        fields: [
+                            TemplateField(id: .parametricExpression(0), node: .sequence([.symbol("x")])),
+                            TemplateField(id: .parametricExpression(1), node: .sequence([.symbol("y")])),
+                            TemplateField(id: .parametricRange, node: .sequence([.symbol("y")]))
+                        ]
+                    )
+                )
+            ])
+        )
+
+        let snapshot = FormulaDisplayBridge.projectionSnapshot(
+            source: formula,
+            includesInsertionMarkers: true
+        )
+
+        let targetID = FormulaInsertionID(
+            sourcePath: ["sequence[0]", "field.parametricRange"],
+            offset: 1,
+            affinity: .trailing
+        )
+
+        guard let cursor = snapshot.cursor(for: targetID) else {
+            return XCTFail("Expected target insertion cursor")
+        }
+        XCTAssertEqual(
+            cursor,
+            EditorCursor(
+                path: [.sequenceIndex(0), .templateField(.parametricRange)],
+                offset: 1
+            )
+        )
+        XCTAssertNotNil(MathEditorTree.sequence(at: cursor.path, in: editorState.root))
+        XCTAssertEqual(MathEditorTree.sequence(at: cursor.path, in: editorState.root)?.count, 1)
+    }
+
+    func testProjectionSnapshotKeepsRepresentativeNestedInsertionCursorsEditorValid() {
+        let cases: [(source: MathFormula, editorRoot: MathNode)] = [
+            (
+                source: .sequence([
+                    .template(
+                        MathTemplateFormula(
+                            kind: .superscript,
+                            fields: [
+                                .sequence([.symbol("x")]),
+                                .sequence([.symbol("2")])
+                            ]
+                        )
+                    )
+                ]),
+                editorRoot: .sequence([
+                    .template(
+                        TemplateNode(
+                            kind: .superscript,
+                            fields: [
+                                TemplateField(id: .base, node: .sequence([.symbol("x")])),
+                                TemplateField(id: .exponent, node: .sequence([.symbol("2")]))
+                            ]
+                        )
+                    )
+                ])
+            ),
+            (
+                source: .sequence([
+                    .template(
+                        MathTemplateFormula(
+                            kind: .fraction,
+                            fields: [
+                                .sequence([.symbol("x")]),
+                                .sequence([.symbol("y")])
+                            ]
+                        )
+                    )
+                ]),
+                editorRoot: .sequence([
+                    .template(
+                        TemplateNode(
+                            kind: .fraction,
+                            fields: [
+                                TemplateField(id: .numerator, node: .sequence([.symbol("x")])),
+                                TemplateField(id: .denominator, node: .sequence([.symbol("y")]))
+                            ]
+                        )
+                    )
+                ])
+            ),
+            (
+                source: .sequence([
+                    .template(
+                        MathTemplateFormula(
+                            kind: .sqrt,
+                            fields: [
+                                .sequence([.symbol("y")])
+                            ]
+                        )
+                    )
+                ]),
+                editorRoot: .sequence([
+                    .template(
+                        TemplateNode(
+                            kind: .sqrt,
+                            fields: [
+                                TemplateField(id: .radicand, node: .sequence([.symbol("y")]))
+                            ]
+                        )
+                    )
+                ])
+            ),
+            (
+                source: .sequence([
+                    .template(
+                        MathTemplateFormula(
+                            kind: .piecewise(rows: 1),
+                            fields: [
+                                .sequence([.symbol("a")]),
+                                .sequence([.symbol("b")])
+                            ]
+                        )
+                    )
+                ]),
+                editorRoot: .sequence([
+                    .template(
+                        TemplateNode(
+                            kind: .piecewise(rows: 1),
+                            fields: [
+                                TemplateField(id: .rowExpression(0), node: .sequence([.symbol("a")])),
+                                TemplateField(id: .rowCondition(0), node: .sequence([.symbol("b")]))
+                            ]
+                        )
+                    )
+                ])
+            ),
+            (
+                source: .sequence([
+                    .template(
+                        MathTemplateFormula(
+                            kind: .parametric2D,
+                            fields: [
+                                .sequence([.symbol("x")]),
+                                .sequence([.symbol("y")]),
+                                .sequence([.symbol("t")])
+                            ]
+                        )
+                    )
+                ]),
+                editorRoot: .sequence([
+                    .template(
+                        TemplateNode(
+                            kind: .parametricEquation2D,
+                            fields: [
+                                TemplateField(id: .parametricExpression(0), node: .sequence([.symbol("x")])),
+                                TemplateField(id: .parametricExpression(1), node: .sequence([.symbol("y")])),
+                                TemplateField(id: .parametricRange, node: .sequence([.symbol("t")]))
+                            ]
+                        )
+                    )
+                ])
+            )
+        ]
+
+        for (source, editorRoot) in cases {
+            let snapshot = FormulaDisplayBridge.projectionSnapshot(
+                source: source,
+                includesInsertionMarkers: true
+            )
+            for (insertionID, cursor) in snapshot.insertionCursors {
+                XCTAssertNotNil(
+                    MathEditorTree.sequence(at: cursor.path, in: editorRoot),
+                    "Insertion \(insertionID.stableStringValue) mapped to invalid path \(cursor)"
+                )
+                if let sequence = MathEditorTree.sequence(at: cursor.path, in: editorRoot) {
+                    XCTAssertTrue(
+                        (0...sequence.count).contains(cursor.offset),
+                        "Insertion \(insertionID.stableStringValue) mapped to out-of-range offset \(cursor.offset) for sequence count \(sequence.count)"
+                    )
+                }
+            }
+        }
+    }
+
     func testBridgeWrapsTemplateFieldsWithInsertionMarkers() {
         let formula = MathFormula.sequence([
             .template(

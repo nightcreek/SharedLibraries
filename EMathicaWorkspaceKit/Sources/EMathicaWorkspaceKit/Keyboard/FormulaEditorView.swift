@@ -70,15 +70,6 @@ public struct FormulaEditorView: View {
                     }
                 }
         )
-#if canImport(UIKit)
-        .background(
-            HardwareKeyboardCaptureView(
-                isFocused: isFocused,
-                onAction: onKeyboardAction
-            )
-            .allowsHitTesting(false)
-        )
-#endif
         .modifier(FormulaEditorVisibilityModifier(isInteractionOverlayOnly: interactionOverlayOnly))
     }
 

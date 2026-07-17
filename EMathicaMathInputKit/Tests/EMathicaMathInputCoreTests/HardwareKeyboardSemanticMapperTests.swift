@@ -48,4 +48,15 @@ final class HardwareKeyboardSemanticMapperTests: XCTestCase {
         XCTAssertEqual(mapper.intent(for: HardwareKeyboardDescriptor(keyCode: 82)), .action(.moveUp))
         XCTAssertEqual(mapper.intent(for: HardwareKeyboardDescriptor(keyCode: 81)), .action(.moveDown))
     }
+
+    func testMapsUnderscoreToSubscriptTemplate() {
+        let intent = mapper.intent(
+            for: HardwareKeyboardDescriptor(
+                characters: "_",
+                charactersIgnoringModifiers: "-"
+            )
+        )
+
+        XCTAssertEqual(intent, .input(.template(.subscript)))
+    }
 }
