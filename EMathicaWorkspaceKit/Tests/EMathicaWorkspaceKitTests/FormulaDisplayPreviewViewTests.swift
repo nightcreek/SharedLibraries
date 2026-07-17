@@ -50,6 +50,11 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
         XCTAssertNotNil(view)
     }
 
+    func testPreviewBridgeFallbackTextStillUsesFormulaDisplayPath() {
+        let view = FormulaDisplayPreviewView(rawValue: "", fallbackText: #"\sqrt{\placeholder{}}"#)
+        XCTAssertNotNil(view)
+    }
+
     func testFormulaEditingDisplayViewCanInitializeWithoutChangingInteractionModel() {
         let state = FormulaInputState(
             editorState: EditorState(
@@ -143,5 +148,11 @@ final class FormulaDisplayPreviewViewTests: XCTestCase {
                 return false
             }
         )
+    }
+
+    func testInputDockPreviewSurfaceHidesHeaderTextAndSuggestionChromeByDefault() {
+        XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsParameterSuggestionsInDock)
+        XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsCommitErrorBanner)
+        XCTAssertFalse(WorkspaceInlineInputVisualMetrics.showsPiecewiseAppendRowControl)
     }
 }

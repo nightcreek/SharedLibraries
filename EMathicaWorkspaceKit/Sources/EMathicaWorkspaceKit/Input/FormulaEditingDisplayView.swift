@@ -7,24 +7,31 @@ import SwiftUI
 public struct FormulaEditingDisplayView: View {
     public let inputState: FormulaInputState
     public let isFocused: Bool
+    public let configuration: FormulaRenderingConfiguration
     public let onTapCursor: (EditorCursor) -> Void
     public let onKeyboardAction: (KeyboardAction) -> Void
 
     public init(
         inputState: FormulaInputState,
         isFocused: Bool,
+        configuration: FormulaRenderingConfiguration = .default,
         onTapCursor: @escaping (EditorCursor) -> Void,
         onKeyboardAction: @escaping (KeyboardAction) -> Void
     ) {
         self.inputState = inputState
         self.isFocused = isFocused
+        self.configuration = configuration
         self.onTapCursor = onTapCursor
         self.onKeyboardAction = onKeyboardAction
     }
 
     public var body: some View {
         ZStack(alignment: .leading) {
-            FormulaDisplayPreviewView(inputState: inputState)
+            FormulaDisplayPreviewView(
+                inputState: inputState,
+                configuration: configuration,
+                surface: .editorPreview
+            )
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
 

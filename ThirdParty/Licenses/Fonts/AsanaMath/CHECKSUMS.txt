@@ -1,0 +1,3 @@
+package Asana-Math.zip sha256 eda6ac7c8100e38edee6078856f5ada08b99b46de52067f0df29e865127c5aa4
+font Asana-Math.otf sha256 9fa3bd7294acd349162ca119351212f7712d26442a3089abcb70bb327b03caf1
+local-resource Asana-Math.plist sha256 419c14ec8aa5a2e5c37306cb4ff539d62fedd5915520ebf8521e28e77df546e6

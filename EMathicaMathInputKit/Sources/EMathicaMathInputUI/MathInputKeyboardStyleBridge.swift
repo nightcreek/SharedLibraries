@@ -222,29 +222,30 @@ enum MathInputKeyboardStyleBridge {
         style: MathKeyboardStyle,
         role: MathInputKeyboardKeyVisualRole
     ) -> FormulaLayoutMetrics {
-        let fontSize = role == .template
-            ? style.typography.templatePrimaryFontSize * 0.86
-            : style.typography.primaryFontSize * 0.9
+        let isTemplate = role == .template
+        let fontSize = isTemplate
+            ? max(style.typography.templatePrimaryFontSize * 0.98, style.typography.primaryFontSize * 0.92)
+            : style.typography.primaryFontSize * 0.94
         return FormulaLayoutMetrics(
             baseFontSize: fontSize,
-            scriptScale: 0.62,
-            minimumFontSize: max(7.5, fontSize * 0.5),
-            operatorSpacing: 1.5,
-            functionSpacing: 1.5,
-            fractionHorizontalPadding: 2.5,
-            fractionVerticalGap: 2,
-            fractionLineThickness: 0.8,
-            sqrtHorizontalPadding: 2.2,
-            sqrtOverlineGap: 1.1,
-            scriptVerticalRaise: max(4.5, fontSize * 0.5),
-            subscriptVerticalDrop: max(3.2, fontSize * 0.32),
-            delimiterHorizontalPadding: 1.5,
-            absoluteValueStrokeWidth: 0.8,
-            rawFallbackPadding: 2,
+            scriptScale: 0.64,
+            minimumFontSize: max(8.5, fontSize * 0.56),
+            operatorSpacing: 1.6,
+            functionSpacing: isTemplate ? 0.96 : 1.2,
+            fractionHorizontalPadding: isTemplate ? 1.7 : 2.1,
+            fractionVerticalGap: isTemplate ? 1.55 : 1.9,
+            fractionLineThickness: 0.78,
+            sqrtHorizontalPadding: isTemplate ? 1.18 : 1.52,
+            sqrtOverlineGap: 1.4,
+            scriptVerticalRaise: max(5.2, fontSize * 0.54),
+            subscriptVerticalDrop: max(3.8, fontSize * 0.35),
+            delimiterHorizontalPadding: isTemplate ? 2.25 : 1.95,
+            absoluteValueStrokeWidth: 0.62,
+            rawFallbackPadding: 1.5,
             cursorWidth: 1.2,
-            placeholderWidth: max(8, fontSize * 0.55),
-            placeholderHeight: max(11, fontSize * 0.8),
-            minimumBoxSize: .init(width: max(10, fontSize * 0.65), height: max(14, fontSize * 0.95))
+            placeholderWidth: max(10.1, fontSize * 0.61),
+            placeholderHeight: max(13.0, fontSize * 0.88),
+            minimumBoxSize: .init(width: max(11.0, fontSize * 0.7), height: max(16.0, fontSize * 0.95))
         )
     }
 

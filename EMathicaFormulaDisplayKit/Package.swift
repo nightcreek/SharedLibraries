@@ -20,7 +20,15 @@ let package = Package(
     dependencies: [],
     targets: [
         .target(
+            name: "EMathicaFormulaDisplayVendor",
+            path: "Sources/EMathicaFormulaDisplayVendor",
+            resources: [
+                .copy("SwiftMath/mathFonts.bundle")
+            ]
+        ),
+        .target(
             name: "EMathicaFormulaDisplayCore",
+            dependencies: ["EMathicaFormulaDisplayVendor"],
             path: "Sources/EMathicaFormulaDisplayCore"
         ),
         .target(
@@ -37,6 +45,21 @@ let package = Package(
             name: "EMathicaFormulaDisplaySwiftUITests",
             dependencies: ["EMathicaFormulaDisplaySwiftUI"],
             path: "Tests/EMathicaFormulaDisplaySwiftUITests"
+        ),
+        .testTarget(
+            name: "VendorCompatibilityTests",
+            dependencies: ["EMathicaFormulaDisplayVendor"],
+            path: "Tests/VendorCompatibilityTests"
+        ),
+        .testTarget(
+            name: "FormulaReadOnlyRenderingTests",
+            dependencies: ["EMathicaFormulaDisplayCore", "EMathicaFormulaDisplaySwiftUI"],
+            path: "Tests/FormulaReadOnlyRenderingTests"
+        ),
+        .testTarget(
+            name: "FormulaFontRoleTests",
+            dependencies: ["EMathicaFormulaDisplayCore"],
+            path: "Tests/FormulaFontRoleTests"
         )
     ]
 )

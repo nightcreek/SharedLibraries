@@ -89,20 +89,46 @@ public struct FormulaRenderPlanBuilder: Sendable {
                     y: offset.y + radicandChild.origin.y
                 )
                 let radicandBounds = radicandChild.box.bounds.offsetBy(dx: radicandOffset.x, dy: radicandOffset.y)
+                let glyphFrame = radicalGlyphFrame(
+                    absoluteBounds: absoluteBounds,
+                    radicandBounds: radicandBounds,
+                    metrics: context.metrics
+                )
+                let overlineFrame = radicalOverlineFrame(
+                    absoluteBounds: absoluteBounds,
+                    radicandBounds: radicandBounds,
+                    metrics: context.metrics
+                )
                 result.elements.append(
-                    .radical(
+                    .text(
                         .init(
                             id: box.id,
-                            frame: absoluteBounds,
-                            overlineStart: .init(x: radicandBounds.minX, y: radicandBounds.minY - context.metrics.sqrtOverlineGap),
-                            overlineEnd: .init(x: radicandBounds.maxX, y: radicandBounds.minY - context.metrics.sqrtOverlineGap),
+                            text: "√",
+                            fontRole: .radicalGlyph,
+                            frame: glyphFrame
+                        )
+                    )
+                )
+                result.elements.append(
+                    .line(
+                        .init(
+                            id: box.id,
+                            frame: overlineFrame,
                             role: .radical
                         )
                     )
                 )
             }
         case .parentheses:
-            result.elements.append(contentsOf: delimiterElements(for: box, absoluteBounds: absoluteBounds, left: "(", right: ")"))
+            result.elements.append(
+                contentsOf: delimiterElements(
+                    for: box,
+                    absoluteBounds: absoluteBounds,
+                    metrics: context.metrics,
+                    left: "(",
+                    right: ")"
+                )
+            )
         case .absoluteValue:
             result.elements.append(contentsOf: absoluteValueElements(for: box, absoluteBounds: absoluteBounds, metrics: context.metrics))
         case .piecewise:
@@ -150,17 +176,26 @@ public struct FormulaRenderPlanBuilder: Sendable {
     private func delimiterElements(
         for box: FormulaLayoutBox,
         absoluteBounds: FormulaRect,
+        metrics: FormulaLayoutMetrics,
         left: String,
         right: String
     ) -> [FormulaRenderElement] {
         guard let contentChild = box.children.first else { return [] }
+        let glyphWidth = max(
+            min(contentChild.origin.x * 0.62, metrics.baseFontSize * 0.34),
+            metrics.baseFontSize * 0.16
+        )
+        let leftInset = max((contentChild.origin.x - glyphWidth) * 0.54, 0)
         let leftFrame = FormulaRect(
-            origin: absoluteBounds.origin,
-            size: .init(width: max(contentChild.origin.x, 1), height: absoluteBounds.size.height)
+            origin: .init(x: absoluteBounds.minX + leftInset, y: absoluteBounds.minY),
+            size: .init(width: glyphWidth, height: absoluteBounds.size.height)
         )
         let rightFrame = FormulaRect(
-            origin: .init(x: absoluteBounds.maxX - leftFrame.size.width, y: absoluteBounds.minY),
-            size: leftFrame.size
+            origin: .init(
+                x: absoluteBounds.maxX - leftInset - glyphWidth,
+                y: absoluteBounds.minY
+            ),
+            size: .init(width: glyphWidth, height: absoluteBounds.size.height)
         )
         return [
             .text(.init(id: box.id, text: left, fontRole: .operatorSymbol, frame: leftFrame)),
@@ -174,8 +209,8 @@ public struct FormulaRenderPlanBuilder: Sendable {
         metrics: FormulaLayoutMetrics
     ) -> [FormulaRenderElement] {
         guard let contentChild = box.children.first else { return [] }
-        let strokeWidth = max(metrics.absoluteValueStrokeWidth, 1)
-        let leadingInset = max((contentChild.origin.x - strokeWidth) / 2, 0)
+        let strokeWidth = max(metrics.absoluteValueStrokeWidth, 0.58)
+        let leadingInset = max((contentChild.origin.x - strokeWidth) * 0.72, 0)
         let leftFrame = FormulaRect(
             origin: .init(x: absoluteBounds.minX + leadingInset, y: absoluteBounds.minY),
             size: .init(width: strokeWidth, height: absoluteBounds.size.height)
@@ -233,6 +268,56 @@ public struct FormulaRenderPlanBuilder: Sendable {
                 )
             )
         ]
+    }
+
+    private func radicalGlyphFrame(
+        absoluteBounds: FormulaRect,
+        radicandBounds: FormulaRect,
+        metrics: FormulaLayoutMetrics
+    ) -> FormulaRect {
+        let overlineY = max(absoluteBounds.minY + metrics.fractionLineThickness, radicandBounds.minY - metrics.sqrtOverlineGap)
+        let leftBearingPadding = max(metrics.baseFontSize * 0.18, 2)
+        let rightPadding = max(metrics.baseFontSize * 0.08, 1)
+        let availableWidth = max(radicandBounds.minX - absoluteBounds.minX, metrics.baseFontSize * 0.32)
+        let glyphOriginX = absoluteBounds.minX
+        let glyphWidth = max(
+            min(
+                availableWidth - rightPadding,
+                max(metrics.baseFontSize * 0.46, leftBearingPadding + metrics.baseFontSize * 0.18)
+            ),
+            max(metrics.baseFontSize * 0.32, leftBearingPadding + metrics.baseFontSize * 0.12)
+        )
+        let glyphHeight = max(radicandBounds.size.height + metrics.baseFontSize * 0.42, metrics.baseFontSize * 1.32)
+        let glyphTopInset = max(metrics.baseFontSize * 0.04, 0.4)
+        let glyphOriginY = max(
+            absoluteBounds.minY,
+            min(
+                overlineY - max(metrics.baseFontSize * 0.18, glyphHeight * 0.12),
+                absoluteBounds.maxY - glyphHeight + glyphTopInset
+            )
+        )
+        let glyphHeightWithinBounds = min(glyphHeight, absoluteBounds.maxY - glyphOriginY)
+        return FormulaRect(
+            origin: .init(x: glyphOriginX, y: glyphOriginY),
+            size: .init(width: glyphWidth, height: max(glyphHeightWithinBounds, metrics.baseFontSize))
+        )
+    }
+
+    private func radicalOverlineFrame(
+        absoluteBounds: FormulaRect,
+        radicandBounds: FormulaRect,
+        metrics: FormulaLayoutMetrics
+    ) -> FormulaRect {
+        let overlineY = max(absoluteBounds.minY + metrics.fractionLineThickness, radicandBounds.minY - metrics.sqrtOverlineGap)
+        let startX = max(
+            absoluteBounds.minX,
+            radicandBounds.minX - max(metrics.sqrtHorizontalPadding * 0.03, 0.08)
+        )
+        let endX = max(startX + 2, radicandBounds.maxX + max(metrics.sqrtHorizontalPadding * 0.05, 0.12))
+        return FormulaRect(
+            origin: .init(x: startX, y: overlineY - metrics.fractionLineThickness / 2),
+            size: .init(width: endX - startX, height: metrics.fractionLineThickness)
+        )
     }
 
     private func fontRole(for box: FormulaLayoutBox) -> FormulaRenderFontRole {

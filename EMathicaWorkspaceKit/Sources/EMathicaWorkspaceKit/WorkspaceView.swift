@@ -3,6 +3,8 @@ import EMathicaMathInputUI
 import EMathicaThemeKit
 import EMathicaDocumentKit
 import EMathicaMathCore
+import EMathicaFormulaDisplayCore
+import EMathicaFormulaDisplaySwiftUI
 import SwiftUI
 
 public struct WorkspaceView: View {
@@ -21,7 +23,15 @@ public struct WorkspaceView: View {
     public init(module: CalculatorModuleType, document: EMathicaDocument, configuration: WorkspaceConfiguration) {
         self.module = module
         self.configuration = configuration
-        self._state = State(initialValue: WorkspaceState(module: module, document: document, toolGroups: configuration.toolGroups, moduleProvider: configuration.moduleProvider))
+        self._state = State(
+            initialValue: WorkspaceState(
+                module: module,
+                document: document,
+                toolGroups: configuration.toolGroups,
+                moduleProvider: configuration.moduleProvider,
+                readOnlyFormulaDisplayConfiguration: configuration.readOnlyFormulaDisplay
+            )
+        )
     }
 
     public var body: some View {
@@ -92,6 +102,37 @@ public struct WorkspaceView: View {
                         objectPanelToggleButton
                     }
 
+                    #if DEBUG
+                    DocumentMenuButton(
+                        title: state.document.metadata.title,
+                        onGoHome: { navigationDelegate?.workspaceDidRequestClose(document: state.document) },
+                        onRename: {
+                            renameTitleDraft = state.document.metadata.title
+                            isShowingRenameSheet = true
+                        },
+                        onShowDeletedHistory: {
+                            isShowingDeletedHistorySheet = true
+                        },
+                        onUndo: { state.dispatch(.undo) },
+                        onRedo: { state.dispatch(.redo) },
+                        onRevertToOpenState: { state.dispatch(.revertToOpenState) },
+                        canUndo: state.canUndo,
+                        canRedo: state.canRedo,
+                        canRevert: state.canRevertToOpenState,
+                        readOnlyFormulaDebugOverride: state.readOnlyFormulaDisplayRuntimeOverride,
+                        effectiveReadOnlyFormulaBackend: state.effectiveReadOnlyFormulaDisplayConfiguration.backend,
+                        readOnlyFormulaDiagnostics: state.readOnlyFormulaDiagnostics,
+                        onUseProjectDefaultReadOnlyFormulaBackend: {
+                            state.clearReadOnlyFormulaBackendOverride()
+                        },
+                        onUseLegacyReadOnlyFormulaBackend: {
+                            state.setReadOnlyFormulaBackendOverride(.legacy)
+                        },
+                        onUseSwiftMathReadOnlyFormulaBackend: {
+                            state.setReadOnlyFormulaBackendOverride(.swiftMath)
+                        }
+                    )
+                    #else
                     DocumentMenuButton(
                         title: state.document.metadata.title,
                         onGoHome: { navigationDelegate?.workspaceDidRequestClose(document: state.document) },
@@ -109,6 +150,7 @@ public struct WorkspaceView: View {
                         canRedo: state.canRedo,
                         canRevert: state.canRevertToOpenState
                     )
+                    #endif
                 }
                 .padding(.leading, metrics.objectPanelLeading)
                 .padding(.top, metrics.inspectorTop)
@@ -493,6 +535,14 @@ private struct DocumentMenuButton: View {
     public var canUndo: Bool
     public var canRedo: Bool
     public var canRevert: Bool
+    #if DEBUG
+    public var readOnlyFormulaDebugOverride: FormulaDisplayRuntimeState?
+    public var effectiveReadOnlyFormulaBackend: FormulaRenderingBackend
+    public var readOnlyFormulaDiagnostics: FormulaDisplayDiagnostics
+    public var onUseProjectDefaultReadOnlyFormulaBackend: () -> Void
+    public var onUseLegacyReadOnlyFormulaBackend: () -> Void
+    public var onUseSwiftMathReadOnlyFormulaBackend: () -> Void
+    #endif
     @State private var isShowingRevertConfirmation = false
 
     public var body: some View {
@@ -511,6 +561,42 @@ private struct DocumentMenuButton: View {
                 Label("重做", systemImage: "arrow.uturn.forward")
             }
             .disabled(!canRedo)
+
+            #if DEBUG
+            Divider()
+
+            Section("Developer") {
+                Text("只读公式后端：\(backendDebugLabel(effectiveReadOnlyFormulaBackend))")
+                if let readOnlyFormulaDebugOverride {
+                    Text("当前来源：Override (\(backendDebugLabel(readOnlyFormulaDebugOverride.backend)))")
+                } else {
+                    Text("当前来源：Project Default")
+                }
+                Text("Fallbacks: \(readOnlyFormulaDiagnostics.fallbackCount)")
+                Text("Last Fallback: \(fallbackReasonDebugLabel(readOnlyFormulaDiagnostics.lastFallbackReason))")
+
+                Menu("Read-only Formula Backend") {
+                    Button(action: onUseProjectDefaultReadOnlyFormulaBackend) {
+                        menuSelectionLabel(
+                            title: "Project Default",
+                            selected: readOnlyFormulaDebugOverride == nil
+                        )
+                    }
+                    Button(action: onUseLegacyReadOnlyFormulaBackend) {
+                        menuSelectionLabel(
+                            title: "Legacy",
+                            selected: effectiveReadOnlyFormulaBackend == .legacy && readOnlyFormulaDebugOverride != nil
+                        )
+                    }
+                    Button(action: onUseSwiftMathReadOnlyFormulaBackend) {
+                        menuSelectionLabel(
+                            title: "SwiftMath",
+                            selected: effectiveReadOnlyFormulaBackend == .swiftMath
+                        )
+                    }
+                }
+            }
+            #endif
 
             Button(role: .destructive) {
                 isShowingRevertConfirmation = true
@@ -553,6 +639,8 @@ private struct DocumentMenuButton: View {
         }
         .buttonStyle(.plain)
         .labelStyle(.iconOnly)
+        .accessibilityLabel("工作区文档菜单")
+        .accessibilityIdentifier("workspace-document-menu")
         .confirmationDialog(
             "恢复到打开时状态？",
             isPresented: $isShowingRevertConfirmation,
@@ -579,6 +667,31 @@ private struct DocumentMenuButton: View {
         }
         .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
     }
+
+    #if DEBUG
+    private func backendDebugLabel(_ backend: FormulaRenderingBackend) -> String {
+        switch backend {
+        case .legacy:
+            return "Legacy"
+        case .swiftMath:
+            return "SwiftMath"
+        }
+    }
+
+    private func fallbackReasonDebugLabel(_ reason: FormulaDisplayFallbackReason?) -> String {
+        guard let reason else { return "none" }
+        return reason.rawValue
+    }
+
+    @ViewBuilder
+    private func menuSelectionLabel(title: String, selected: Bool) -> some View {
+        if selected {
+            Label(title, systemImage: "checkmark")
+        } else {
+            Text(title)
+        }
+    }
+    #endif
 }
 
 private struct RenameWorkspaceTitleSheet: View {
@@ -662,7 +775,8 @@ private struct WorkspaceInlineInputDock: View {
         VStack(spacing: WorkspaceInlineInputVisualMetrics.previewKeyboardSpacing) {
             editorBar
 
-            if state.isInputPresented && !state.inputDraftAnalysis.suggestions.isEmpty {
+            if WorkspaceInlineInputVisualMetrics.showsParameterSuggestionsInDock,
+               state.isInputPresented && !state.inputDraftAnalysis.suggestions.isEmpty {
                 parameterSuggestionView
             }
 
@@ -681,8 +795,6 @@ private struct WorkspaceInlineInputDock: View {
     private var editorBar: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                inputEntryHeader
-
                 Spacer(minLength: 0)
 
                 FormulaBarIconButton(systemName: "keyboard") {
@@ -695,6 +807,17 @@ private struct WorkspaceInlineInputDock: View {
                 FormulaBarIconButton(title: "↵") {
                     state.dispatch(.submitInput)
                 }
+                .overlay(alignment: .topTrailing) {
+                    if shouldShowInputStatusBadge {
+                        Image(systemName: inputStatusBadgeSymbol)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(inputStatusBadgeColor)
+                            .padding(4)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .offset(x: 4, y: -4)
+                            .accessibilityHidden(true)
+                    }
+                }
             }
 
             if state.canShowQuickStartExpressionTemplates {
@@ -705,6 +828,7 @@ private struct WorkspaceInlineInputDock: View {
                 FormulaEditingDisplayView(
                     inputState: state.formulaInputState,
                     isFocused: state.focus == .formulaEditor,
+                    configuration: state.effectiveReadOnlyFormulaDisplayConfiguration,
                     onTapCursor: { cursor in
                         state.focusEditor(at: cursor)
                         if !state.isInputPresented {
@@ -721,31 +845,24 @@ private struct WorkspaceInlineInputDock: View {
                 .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .bottomLeading) {
-                    if let presentation = draftDiagnosticPresentation {
-                        HStack(spacing: 5) {
-                            Image(systemName: diagnosticIconName(for: presentation.severity))
-                                .font(.system(size: 10, weight: .semibold))
-                            Text(presentation.message)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(diagnosticColor(for: presentation.severity))
-                    }
-                }
             } else {
-                FormulaDisplayPreviewView(inputState: state.formulaInputState)
+                FormulaDisplayPreviewView(
+                    inputState: state.formulaInputState,
+                    configuration: state.effectiveReadOnlyFormulaDisplayConfiguration,
+                    surface: .editorPreview
+                )
                     .allowsHitTesting(false)
                     .frame(minHeight: FormulaEditorView.preferredHeight(for: state.formulaInputState.editorState))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if state.isInputPresented, let commitErrorMessage = state.commitErrorMessage {
+            if WorkspaceInlineInputVisualMetrics.showsCommitErrorBanner,
+               state.isInputPresented, let commitErrorMessage = state.commitErrorMessage {
                 commitErrorBanner(message: commitErrorMessage)
             }
 
-            if state.canAppendPiecewiseRow {
+            if WorkspaceInlineInputVisualMetrics.showsPiecewiseAppendRowControl,
+               state.canAppendPiecewiseRow {
                 HStack {
                     Button {
                         state.appendPiecewiseRow()
@@ -794,54 +911,6 @@ private struct WorkspaceInlineInputDock: View {
         }
     }
 
-    private var inputEntryHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text("f(x)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary)
-
-                if let modeBadgeText = state.inputSessionModeBadgeText {
-                    Text(modeBadgeText)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(inputModeBadgeForeground)
-                        .lineLimit(1)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background {
-                            Capsule(style: .continuous)
-                                .fill(inputModeBadgeBackground)
-                        }
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .stroke(inputModeBadgeStroke, lineWidth: 0.8)
-                        }
-                }
-
-                if let sessionStatusLabel = state.inputSessionStatusLabel,
-                   sessionStatusLabel != state.inputSessionPrimaryTitle {
-                    Text(sessionStatusLabel)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-            }
-
-            Text(state.inputSessionPrimaryTitle)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(primaryInputTitleColor)
-                .lineLimit(1)
-                .truncationMode(.tail)
-
-            Text(state.inputSessionSecondaryTitle)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary.opacity(0.9))
-                .lineLimit(2)
-                .truncationMode(.tail)
-        }
-    }
-
     private var quickStartTemplateStrip: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("快速开始")
@@ -861,7 +930,7 @@ private struct WorkspaceInlineInputDock: View {
                                     Text(template.title)
                                         .font(.system(size: 12, weight: .bold, design: .rounded))
                                 }
-                                .foregroundStyle(primaryInputTitleColor)
+                                .foregroundStyle(inputChromeTint)
 
                                 Text(template.previewText)
                                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
@@ -1075,35 +1144,26 @@ private extension WorkspaceInlineInputDock {
         }
     }
 
-    public var primaryInputTitleColor: Color {
+    var inputChromeTint: Color {
         colorScheme == .dark ? Color.white.opacity(0.95) : Color.black.opacity(0.88)
     }
 
-    public var inputModeBadgeBackground: Color {
-        switch state.inputSessionModeBadgeText {
-        case "编辑":
-            return Color.orange.opacity(colorScheme == .dark ? 0.18 : 0.12)
-        default:
-            return Color.blue.opacity(colorScheme == .dark ? 0.18 : 0.10)
-        }
+    var shouldShowInputStatusBadge: Bool {
+        state.commitErrorMessage != nil || draftDiagnosticPresentation != nil
     }
 
-    public var inputModeBadgeStroke: Color {
-        switch state.inputSessionModeBadgeText {
-        case "编辑":
-            return Color.orange.opacity(colorScheme == .dark ? 0.30 : 0.18)
-        default:
-            return Color.blue.opacity(colorScheme == .dark ? 0.28 : 0.16)
+    var inputStatusBadgeSymbol: String {
+        if state.commitErrorMessage != nil {
+            return "exclamationmark.triangle.fill"
         }
+        return diagnosticIconName(for: draftDiagnosticPresentation?.severity ?? .info)
     }
 
-    public var inputModeBadgeForeground: Color {
-        switch state.inputSessionModeBadgeText {
-        case "编辑":
-            return Color.orange.opacity(0.92)
-        default:
-            return Color.blue.opacity(0.92)
+    var inputStatusBadgeColor: Color {
+        if state.commitErrorMessage != nil {
+            return Color.red.opacity(0.92)
         }
+        return diagnosticColor(for: draftDiagnosticPresentation?.severity ?? .info)
     }
 }
 
@@ -1118,6 +1178,9 @@ public enum WorkspaceInlineInputVisualMetrics {
     public static let usesStrongKeyboardMaterialBackplate = false
     public static let keyboardPanelUsesVisualClip = false
     public static let formulaContentHitTestingWhenClosed = false
+    public static let showsParameterSuggestionsInDock = false
+    public static let showsCommitErrorBanner = false
+    public static let showsPiecewiseAppendRowControl = false
 }
 
 private struct FlowLayout<Content: View>: View {

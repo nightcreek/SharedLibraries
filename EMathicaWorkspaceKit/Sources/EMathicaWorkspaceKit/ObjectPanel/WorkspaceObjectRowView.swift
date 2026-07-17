@@ -1,3 +1,5 @@
+import EMathicaFormulaDisplaySwiftUI
+import EMathicaFormulaDisplayCore
 import EMathicaMathInputCore
 import EMathicaThemeKit
 import EMathicaMathCore
@@ -26,9 +28,10 @@ public struct WorkspaceObjectRowView: View {
     public let onFindRoots: (() -> Void)?
     public let semanticIntentAdapter: (any SemanticIntentAdapterProtocol)?
     public let geometryResolver: any GeometryPresentationResolverProtocol
+    public let formulaDisplayConfiguration: ObjectPanelFormulaDisplayConfiguration
 
     public var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: WorkspaceObjectFormulaDisplayMetrics.rowSpacing) {
             Button(action: onToggleVisibility) {
                 visibilityDot
             }
@@ -38,25 +41,39 @@ public struct WorkspaceObjectRowView: View {
                 onOpenSettings()
             })
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top, spacing: 0) {
-                    Text(object.name)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(primaryText)
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: WorkspaceObjectFormulaDisplayMetrics.metadataSpacing) {
+                HStack(alignment: .top, spacing: WorkspaceObjectFormulaDisplayMetrics.nameToExpressionSpacing) {
+                    WorkspaceReadOnlyFormulaText(
+                        surface: .objectPanel,
+                        rawValue: WorkspaceFormulaMarkupResolver.nameMarkup(for: object.name),
+                        fallbackText: object.name,
+                        tint: primaryText,
+                        fontSize: 13,
+                        minHeight: 18,
+                        maxHeight: 24,
+                        allowsMultiline: false,
+                        configuration: formulaDisplayConfiguration
+                    )
+                    .frame(
+                        maxWidth: WorkspaceObjectFormulaDisplayMetrics.nameMaxWidth,
+                        alignment: .leading
+                    )
+                    .fixedSize(horizontal: true, vertical: false)
 
                     Text("：")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(primaryText.opacity(0.86))
+                        .padding(.trailing, WorkspaceObjectFormulaDisplayMetrics.colonTrailingSpacing)
 
                     FormulaCompactReadOnlyView(
                         editorState: primaryExpressionEditorState,
                         fallbackText: primaryExpressionText,
                         allowsMultiline: allowsMultilineFormula,
                         minHeight: formulaMinHeight,
-                        tint: primaryText.opacity(object.isVisible ? 1 : 0.56)
+                        tint: primaryText.opacity(object.isVisible ? 1 : 0.56),
+                        configuration: formulaDisplayConfiguration
                     )
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onEditExpression)
                 }
@@ -291,21 +308,7 @@ public struct WorkspaceObjectRowView: View {
     }
 
     private var primaryExpressionEditorState: EditorState? {
-        if let astData = object.expression.editorASTData?.data(using: .utf8),
-           let ast = try? JSONDecoder().decode(EditorState.self, from: astData) {
-            return ast
-        }
-        if let source = object.expression.sourceExpression, !source.isEmpty,
-           let root = SimpleMathParser().parseSource(source) {
-            let offset: Int
-            if case .sequence(let nodes) = root {
-                offset = nodes.count
-            } else {
-                offset = 1
-            }
-            return EditorState(root: root, cursor: EditorCursor(path: [], offset: offset))
-        }
-        return nil
+        WorkspaceObjectExpressionDisplayResolver.editorState(for: object)
     }
 
     private var simplifiedExpressionText: String {
@@ -449,6 +452,21 @@ public enum WorkspaceObjectRowVisualMetrics {
     public static let unselectedStrokeLightOpacity: Double = 0.06
 }
 
+public enum WorkspaceObjectFormulaDisplayMetrics {
+    public static let rowSpacing: CGFloat = 6
+    public static let metadataSpacing: CGFloat = 4
+    public static let nameMaxWidth: CGFloat = 44
+    public static let nameToExpressionSpacing: CGFloat = 1
+    public static let colonTrailingSpacing: CGFloat = 1
+    public static let singleLineUsesHorizontalScroll = true
+    public static let compactFormulaMaxHeight: CGFloat = 44
+    public static let multilineFormulaMaxHeight: CGFloat = 76
+
+    public static func maximumFormulaHeight(allowsMultiline: Bool) -> CGFloat {
+        allowsMultiline ? multilineFormulaMaxHeight : compactFormulaMaxHeight
+    }
+}
+
 public enum WorkspaceObjectRowLayoutMetrics {
     public static func formulaMinHeight(
         semanticGraphKind: SemanticGraphKind?,
@@ -523,32 +541,27 @@ private struct FormulaCompactReadOnlyView: View {
     public let allowsMultiline: Bool
     public let minHeight: CGFloat
     public let tint: Color
+    public let configuration: ObjectPanelFormulaDisplayConfiguration
 
     public var body: some View {
-        Group {
-            if let editorState {
-                FormulaEditorView(
-                    editorState: editorState,
-                    isFocused: false,
-                    onTapCursor: { _ in },
-                    onKeyboardAction: { _ in }
-                )
-                .scaleEffect(WorkspaceObjectFormulaDisplayMetrics.scaleFactor(allowsMultiline: allowsMultiline), anchor: .topLeading)
-                .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
-                .allowsHitTesting(false)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    Text(fallbackText)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .multilineTextAlignment(.leading)
-                        .frame(minHeight: minHeight, alignment: .topLeading)
-                }
-                .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
-            }
-        }
-        .foregroundStyle(tint)
+        WorkspaceReadOnlyFormulaText(
+            surface: .objectPanel,
+            rawValue: formulaMarkup,
+            fallbackText: fallbackText,
+            tint: tint,
+            fontSize: allowsMultiline ? 12 : 13,
+            minHeight: minHeight,
+            maxHeight: WorkspaceObjectFormulaDisplayMetrics.maximumFormulaHeight(allowsMultiline: allowsMultiline),
+            allowsMultiline: allowsMultiline,
+            configuration: configuration
+        )
+    }
+
+    private var formulaMarkup: String {
+        WorkspaceObjectFormulaSource.make(
+            rawValueFallback: fallbackText,
+            editorState: editorState
+        )
     }
 }
 
@@ -566,6 +579,24 @@ public enum WorkspaceObjectExpressionDisplayResolver {
         return object.name
     }
 
+    public static func editorState(for object: MathObject) -> EditorState? {
+        if let astData = object.expression.editorASTData?.data(using: .utf8),
+           let ast = try? JSONDecoder().decode(EditorState.self, from: astData) {
+            return ast
+        }
+        if let source = object.expression.sourceExpression, !source.isEmpty,
+           let root = SimpleMathParser().parseSource(source) {
+            let offset: Int
+            if case .sequence(let nodes) = root {
+                offset = nodes.count
+            } else {
+                offset = 1
+            }
+            return EditorState(root: root, cursor: EditorCursor(path: [], offset: offset))
+        }
+        return nil
+    }
+
     private static func nonEmptyText(_ text: String?) -> String? {
         guard let text else { return nil }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -573,14 +604,147 @@ public enum WorkspaceObjectExpressionDisplayResolver {
     }
 }
 
-public enum WorkspaceObjectFormulaDisplayMetrics {
-    public static func scaleFactor(allowsMultiline: Bool) -> CGFloat {
-        allowsMultiline ? 0.68 : 0.62
+enum WorkspaceFormulaMarkupResolver {
+    static func nameMarkup(for name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return name }
+
+        let parts = trimmed.split(separator: "_", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return trimmed }
+
+        let base = String(parts[0])
+        let suffix = String(parts[1])
+        guard !base.isEmpty, !suffix.isEmpty else { return trimmed }
+        return "\(base)_{\(suffix)}"
     }
 
-    public static func fallbackLineLimit(allowsMultiline: Bool, fallbackText: String) -> Int {
-        _ = allowsMultiline
-        _ = fallbackText
-        return 1
+    static func expressionMarkup(
+        displayText: String,
+        originalLatex: String?,
+        rawInput: String?
+    ) -> String? {
+        if let rawInput {
+            let trimmedRawInput = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedRawInput.hasPrefix(#"\parametric{"#) || trimmedRawInput.hasPrefix(#"\piecewise{"#) {
+                return trimmedRawInput
+            }
+        }
+        let trimmedDisplay = displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedDisplay.isEmpty {
+            return trimmedDisplay
+        }
+        if let originalLatex, !originalLatex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return originalLatex
+        }
+        if let rawInput, !rawInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return rawInput
+        }
+        return trimmedDisplay.isEmpty ? nil : trimmedDisplay
+    }
+}
+
+struct WorkspaceReadOnlyFormulaText: View {
+    let surface: FormulaDisplaySurface
+    let rawValue: String
+    let fallbackText: String
+    let tint: Color
+    let fontSize: CGFloat
+    let minHeight: CGFloat
+    let maxHeight: CGFloat
+    let allowsMultiline: Bool
+    let configuration: ObjectPanelFormulaDisplayConfiguration
+
+    var body: some View {
+        switch FormulaReadOnlyDisplayResolver.resolve(
+            surface: surface,
+            rawValue: rawValue,
+            fallbackText: fallbackText,
+            fontSize: fontSize,
+            minHeight: minHeight,
+            allowsMultiline: allowsMultiline,
+            configuration: configuration
+        ) {
+        case .plainText(let text, _):
+            plainTextFallback(text)
+        case .formula(let rawValue, let options, _):
+            if !allowsMultiline && WorkspaceObjectFormulaDisplayMetrics.singleLineUsesHorizontalScroll {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    formulaContent(rawValue: rawValue, options: options)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .frame(minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+            } else {
+                formulaContent(rawValue: rawValue, options: options)
+                    .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: allowsMultiline)
+            }
+        }
+    }
+
+    private func formulaContent(rawValue: String, options: FormulaDisplayOptions) -> some View {
+        FormulaDisplayView(
+            rawValue: rawValue,
+            style: formulaStyle,
+            options: options,
+            metrics: formulaMetrics
+        )
+        .frame(maxHeight: maxHeight, alignment: .topLeading)
+        .clipped()
+        .allowsHitTesting(false)
+    }
+
+    private var formulaStyle: FormulaDisplayStyle {
+        FormulaDisplayStyle(
+            textColor: tint,
+            operatorColor: tint,
+            functionColor: tint,
+            rawTextColor: tint,
+            errorTextColor: tint.opacity(0.76),
+            cursorColor: tint,
+            placeholderStrokeColor: tint.opacity(0.75),
+            placeholderFillColor: .clear,
+            fractionLineColor: tint,
+            radicalColor: tint,
+            delimiterColor: tint,
+            debugColor: .clear,
+            baseFont: .system(size: fontSize, weight: .semibold, design: .rounded),
+            scriptScale: 0.66
+        )
+    }
+
+    private var formulaMetrics: FormulaLayoutMetrics {
+        FormulaReadOnlyDisplayResolver.makeMetrics(
+            surface: surface,
+            fontSize: fontSize,
+            minHeight: minHeight
+        )
+    }
+
+    private func plainTextFallback(_ text: String) -> some View {
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? " " : text
+        return ScrollView(.horizontal, showsIndicators: false) {
+            Text(content)
+                .font(.system(size: fontSize, weight: .semibold, design: .rounded))
+                .foregroundStyle(tint)
+                .lineLimit(allowsMultiline ? nil : 1)
+                .frame(minHeight: minHeight, maxHeight: maxHeight, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, minHeight: minHeight, maxHeight: maxHeight, alignment: .topLeading)
+    }
+}
+
+private extension WorkspaceObjectFormulaSource {
+    static func make(rawValueFallback: String, editorState: EditorState?) -> String {
+        guard let editorState else {
+            return WorkspaceFormulaMarkupResolver.expressionMarkup(
+                displayText: rawValueFallback,
+                originalLatex: nil,
+                rawInput: rawValueFallback
+            ) ?? rawValueFallback
+        }
+        return MathInputProjectionAdapter.displayMarkup(
+            from: FormulaInputState(editorState: editorState)
+        ).rawValue
     }
 }

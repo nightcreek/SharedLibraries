@@ -140,11 +140,15 @@ public struct FormulaLayoutEngine: Sendable {
         path: String,
         horizontalPadding: Double = 0
     ) -> FormulaLayoutBox {
-        let characterWidth = max(metrics.baseFontSize * 0.6, 1)
         let height = max(metrics.minimumBoxSize.height, metrics.baseFontSize * 1.2)
         let width = max(
             metrics.minimumBoxSize.width,
-            Double(max(value.count, 1)) * characterWidth + horizontalPadding * 2
+            estimatedTextWidth(
+                for: value,
+                kind: kind,
+                textRole: textRole,
+                metrics: metrics
+            ) + horizontalPadding * 2
         )
         let size = FormulaSize(width: width, height: height)
         return makeBox(
@@ -237,12 +241,19 @@ public struct FormulaLayoutEngine: Sendable {
         path: String
     ) -> FormulaLayoutBox {
         let radicandBox = layout(radicand, metrics: metrics, path: "\(path).radicand")
-        let radicalWidth = max(metrics.baseFontSize * 0.5, metrics.sqrtHorizontalPadding)
-        let topPadding = metrics.sqrtOverlineGap + metrics.fractionLineThickness
-        let childOrigin = FormulaPoint(x: radicalWidth + metrics.sqrtHorizontalPadding, y: topPadding)
+        // Reserve enough width for the radical glyph's left bearing so the rendered
+        // "√" stays inside the plan bounds instead of being cropped by a tight text frame.
+        let radicalWidth = max(metrics.baseFontSize * 0.32, metrics.sqrtHorizontalPadding * 0.72, 5.6)
+        let radicalToContentGap = max(metrics.sqrtHorizontalPadding * 0.03, metrics.baseFontSize * 0.008, 0.16)
+        let topPadding = max(metrics.sqrtOverlineGap + metrics.fractionLineThickness * 0.28, metrics.baseFontSize * 0.025)
+        let childOrigin = FormulaPoint(x: radicalWidth + radicalToContentGap, y: topPadding)
         let baseline = childOrigin.y + radicandBox.baseline
         let width = childOrigin.x + radicandBox.size.width
-        let height = max(childOrigin.y + radicandBox.size.height, metrics.minimumBoxSize.height)
+        let height = max(
+            childOrigin.y + radicandBox.size.height,
+            radicandBox.size.height + topPadding + metrics.fractionLineThickness,
+            metrics.minimumBoxSize.height
+        )
 
         let size = FormulaSize(width: width, height: height)
         return makeBox(
@@ -367,9 +378,25 @@ public struct FormulaLayoutEngine: Sendable {
         path: String
     ) -> FormulaLayoutBox {
         let contentBox = layout(content, metrics: metrics, path: "\(path).content")
-        let delimiterWidth = max(metrics.baseFontSize * 0.3, metrics.delimiterHorizontalPadding)
-        let horizontalInset = delimiterWidth + metrics.delimiterHorizontalPadding
-        let height = max(contentBox.size.height + metrics.sqrtOverlineGap, metrics.minimumBoxSize.height)
+        let delimiterWidth: Double
+        switch kind {
+        case .absoluteValue:
+            delimiterWidth = max(metrics.absoluteValueStrokeWidth, 0.58)
+        case .parentheses:
+            delimiterWidth = max(metrics.baseFontSize * 0.17, metrics.delimiterHorizontalPadding * 0.8, 1.9)
+        default:
+            delimiterWidth = max(metrics.baseFontSize * 0.2, metrics.delimiterHorizontalPadding * 0.82, 1.9)
+        }
+        let contentGap = max(
+            metrics.delimiterHorizontalPadding * 0.72,
+            kind == .absoluteValue ? metrics.baseFontSize * 0.07 : metrics.baseFontSize * 0.085,
+            1.35
+        )
+        let horizontalInset = delimiterWidth + contentGap
+        let height = max(
+            contentBox.size.height + max(metrics.sqrtOverlineGap, metrics.baseFontSize * 0.08),
+            metrics.minimumBoxSize.height
+        )
         let childOrigin = FormulaPoint(
             x: horizontalInset,
             y: max(0, (height - contentBox.size.height) / 2)
@@ -403,7 +430,7 @@ public struct FormulaLayoutEngine: Sendable {
         let rangeBox = range.map { layout($0, metrics: rowMetrics.scaledForScript(), path: "\(path).range") }
 
         let labelWidth = max(xLabel.size.width, yLabel.size.width, rangeLabel.size.width)
-        let rowGap = max(metrics.functionSpacing, 4)
+        let rowGap = max(metrics.functionSpacing * 0.8, metrics.baseFontSize * 0.14, 2.1)
         let rowOneHeight = max(xLabel.size.height, xBox.size.height)
         let rowTwoHeight = max(yLabel.size.height, yBox.size.height)
         let rowThreeHeight = max(rangeLabel.size.height, rangeBox?.size.height ?? 0)
@@ -456,7 +483,7 @@ public struct FormulaLayoutEngine: Sendable {
         metrics: FormulaLayoutMetrics,
         path: String
     ) -> FormulaLayoutBox {
-        let rowGap = max(metrics.functionSpacing, 4)
+        let rowGap = max(metrics.functionSpacing * 0.8, metrics.baseFontSize * 0.14, 2.1)
         let expressionBoxes = rows.enumerated().map {
             layout($0.element.expression, metrics: metrics, path: "\(path).expr\($0.offset)")
         }
@@ -465,8 +492,8 @@ public struct FormulaLayoutEngine: Sendable {
         }
         let expressionWidth = expressionBoxes.map(\.size.width).max() ?? 0
         let conditionWidth = conditionBoxes.map(\.size.width).max() ?? 0
-        let braceWidth = max(metrics.baseFontSize * 0.35, metrics.delimiterHorizontalPadding * 1.5)
-        let spacing = metrics.functionSpacing
+        let braceWidth = max(metrics.baseFontSize * 0.28, metrics.delimiterHorizontalPadding * 1.22)
+        let spacing = max(metrics.functionSpacing * 0.82, 1.4)
 
         var children: [FormulaLayoutChild] = []
         var y = 0.0
@@ -561,6 +588,79 @@ public struct FormulaLayoutEngine: Sendable {
         return 0
     }
 
+    private func estimatedTextWidth(
+        for value: String,
+        kind: FormulaLayoutBox.Kind,
+        textRole: FormulaTextRole?,
+        metrics: FormulaLayoutMetrics
+    ) -> Double {
+        let scalarWidth = value.reduce(0.0) { partial, character in
+            partial + estimatedCharacterFactor(for: character, kind: kind, textRole: textRole)
+        }
+        let fallbackFactor = kind == .operatorSymbol ? 0.5 : 0.52
+        let widthFactor = max(scalarWidth, fallbackFactor)
+        return max(metrics.baseFontSize * widthFactor, 1)
+    }
+
+    private func estimatedCharacterFactor(
+        for character: Character,
+        kind: FormulaLayoutBox.Kind,
+        textRole: FormulaTextRole?
+    ) -> Double {
+        if character.isWhitespace {
+            return 0.22
+        }
+
+        switch character {
+        case "(", ")", "[", "]", "{", "}":
+            return 0.28
+        case ".", ",", ":", ";", "'", "\"":
+            return 0.22
+        case "|":
+            return 0.2
+        case "_":
+            return 0.32
+        case "=", "+", "-", "×", "÷", "±", "<", ">", "≤", "≥", "≠":
+            return kind == .operatorSymbol ? 0.48 : 0.44
+        default:
+            break
+        }
+
+        if character.isNumber {
+            return 0.48
+        }
+
+        if textRole == .raw {
+            switch character {
+            case "x", "y", "z", "t", "f", "j", "l", "r":
+                return 0.46
+            case "m", "w", "M", "W":
+                return 0.74
+            default:
+                break
+            }
+        }
+
+        if character.isUppercaseASCII {
+            return character == "M" || character == "W" ? 0.76 : 0.58
+        }
+
+        if character.isLowercaseASCII {
+            switch character {
+            case "i", "j", "l":
+                return 0.3
+            case "m", "w":
+                return 0.68
+            case "f", "r", "t":
+                return 0.4
+            default:
+                return 0.5
+            }
+        }
+
+        return 0.56
+    }
+
     private func makeBox(
         id: String,
         kind: FormulaLayoutBox.Kind,
@@ -581,5 +681,15 @@ public struct FormulaLayoutEngine: Sendable {
             textContent: textContent,
             textRole: textRole
         )
+    }
+}
+
+private extension Character {
+    var isUppercaseASCII: Bool {
+        unicodeScalars.count == 1 && unicodeScalars.first?.properties.isUppercase == true
+    }
+
+    var isLowercaseASCII: Bool {
+        unicodeScalars.count == 1 && unicodeScalars.first?.properties.isLowercase == true
     }
 }

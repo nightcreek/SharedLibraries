@@ -29,6 +29,7 @@ let package = Package(
                 "EMathicaThemeKit",
                 .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit"),
                 .product(name: "EMathicaMathInputUI", package: "EMathicaMathInputKit"),
+                .product(name: "EMathicaFormulaDisplayCore", package: "EMathicaFormulaDisplayKit"),
                 .product(name: "EMathicaFormulaDisplaySwiftUI", package: "EMathicaFormulaDisplayKit")
             ],
             path: "Sources/EMathicaWorkspaceKit"
@@ -37,6 +38,7 @@ let package = Package(
             name: "EMathicaWorkspaceKitTests",
             dependencies: [
                 "EMathicaWorkspaceKit",
+                .product(name: "EMathicaFormulaDisplayCore", package: "EMathicaFormulaDisplayKit"),
                 .product(name: "EMathicaMathInputCore", package: "EMathicaMathInputKit"),
                 .product(name: "EMathicaMathInputUI", package: "EMathicaMathInputKit")
             ],

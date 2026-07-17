@@ -159,6 +159,30 @@ final class EMathicaMathInputCoreTests: XCTestCase {
         XCTAssertEqual(state.cursor.offset, 0)
     }
 
+    func testDeleteBackwardOnEmptyAbsoluteValueRemovesStructure() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertTemplate(.absoluteValue), state: &state)
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "")
+        XCTAssertEqual(state.cursor.path, [])
+        XCTAssertEqual(state.cursor.offset, 0)
+    }
+
+    func testDeleteBackwardOnEmptyParenthesesRemovesStructure() {
+        var state = EditorState()
+        let controller = InputController()
+
+        controller.handle(.insertTemplate(.parentheses), state: &state)
+        controller.handle(.deleteBackward, state: &state)
+
+        XCTAssertEqual(projectedSource(state), "")
+        XCTAssertEqual(state.cursor.path, [])
+        XCTAssertEqual(state.cursor.offset, 0)
+    }
+
     func testDeleteBackwardOnEmptySuperscriptUnwrapsBase() {
         var state = EditorState()
         let controller = InputController()

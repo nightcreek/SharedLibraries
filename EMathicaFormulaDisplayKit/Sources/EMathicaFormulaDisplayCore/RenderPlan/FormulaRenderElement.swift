@@ -4,6 +4,7 @@ public enum FormulaRenderFontRole: Equatable, Sendable {
     case normal
     case script
     case operatorSymbol
+    case radicalGlyph
     case function
     case raw
     case error
@@ -60,6 +61,10 @@ public struct FormulaLineElement: Equatable, Sendable {
 public struct FormulaRadicalElement: Equatable, Sendable {
     public var id: FormulaLayoutID
     public var frame: FormulaRect
+    public var checkStart: FormulaPoint
+    public var checkBottom: FormulaPoint
+    public var valley: FormulaPoint
+    public var shoulder: FormulaPoint
     public var overlineStart: FormulaPoint
     public var overlineEnd: FormulaPoint
     public var role: FormulaRenderStrokeRole
@@ -67,12 +72,20 @@ public struct FormulaRadicalElement: Equatable, Sendable {
     public init(
         id: FormulaLayoutID,
         frame: FormulaRect,
+        checkStart: FormulaPoint,
+        checkBottom: FormulaPoint,
+        valley: FormulaPoint,
+        shoulder: FormulaPoint,
         overlineStart: FormulaPoint,
         overlineEnd: FormulaPoint,
         role: FormulaRenderStrokeRole
     ) {
         self.id = id
         self.frame = frame
+        self.checkStart = checkStart
+        self.checkBottom = checkBottom
+        self.valley = valley
+        self.shoulder = shoulder
         self.overlineStart = overlineStart
         self.overlineEnd = overlineEnd
         self.role = role

@@ -21,23 +21,28 @@ struct FormulaRenderElementView: View {
         case .line(let line):
             Rectangle()
                 .fill(color(for: line))
-                .frame(width: max(line.frame.size.width, 1), height: max(line.frame.size.height, 1))
+                .frame(width: max(line.frame.size.width, 0.75), height: max(line.frame.size.height, 0.75))
                 .position(
                     x: line.frame.origin.x + line.frame.size.width / 2,
                     y: line.frame.origin.y + line.frame.size.height / 2
                 )
         case .radical(let radical):
             Path { path in
-                let rect = radical.frame
-                let startX = rect.origin.x
-                let startY = rect.maxY
-                path.move(to: CGPoint(x: startX, y: startY - rect.size.height * 0.22))
-                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.16, y: startY))
-                path.addLine(to: CGPoint(x: startX + rect.size.width * 0.3, y: rect.origin.y + rect.size.height * 0.42))
+                path.move(to: CGPoint(x: radical.checkStart.x, y: radical.checkStart.y))
+                path.addLine(to: CGPoint(x: radical.checkBottom.x, y: radical.checkBottom.y))
+                path.addLine(to: CGPoint(x: radical.valley.x, y: radical.valley.y))
+                path.addLine(to: CGPoint(x: radical.shoulder.x, y: radical.shoulder.y))
                 path.addLine(to: CGPoint(x: radical.overlineStart.x, y: radical.overlineStart.y))
                 path.addLine(to: CGPoint(x: radical.overlineEnd.x, y: radical.overlineEnd.y))
             }
-            .stroke(color(for: radical), lineWidth: max(1, radical.frame.size.height * 0.04))
+            .stroke(
+                color(for: radical),
+                style: StrokeStyle(
+                    lineWidth: max(0.82, radical.frame.size.height * 0.024),
+                    lineCap: .square,
+                    lineJoin: .miter
+                )
+            )
         case .cursor(let cursor):
             if showsCursor {
                 Rectangle()
@@ -80,6 +85,8 @@ struct FormulaRenderElementView: View {
             return .system(size: estimatedSize * style.scriptScale, weight: .semibold, design: .rounded)
         case .operatorSymbol:
             return .system(size: estimatedSize, weight: .semibold, design: .rounded)
+        case .radicalGlyph:
+            return .system(size: max(element.frame.size.height * 0.96, 10), weight: .regular, design: .default)
         case .function:
             return .system(size: estimatedSize, weight: .medium, design: .rounded)
         case .raw, .error:
@@ -93,6 +100,8 @@ struct FormulaRenderElementView: View {
         switch element.fontRole {
         case .operatorSymbol:
             return style.operatorColor
+        case .radicalGlyph:
+            return style.radicalColor
         case .function:
             return style.functionColor
         case .raw:

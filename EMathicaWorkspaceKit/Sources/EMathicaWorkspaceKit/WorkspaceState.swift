@@ -1,5 +1,6 @@
 import EMathicaMathInputCore
 import EMathicaDocumentKit
+import EMathicaFormulaDisplayCore
 import Foundation
 import Observation
 import CoreGraphics
@@ -10,7 +11,22 @@ import EMathicaMathCore
 final class WorkspaceState {
     public var module: CalculatorModuleType
     private let moduleProvider: WorkspaceModuleProviding
-    public var document: EMathicaDocument
+    public let readOnlyFormulaDisplayConfiguration: FormulaRenderingConfiguration
+    public var document: EMathicaDocument {
+        didSet {
+            #if DEBUG
+            refreshReadOnlyFormulaDiagnostics()
+            #endif
+        }
+    }
+    #if DEBUG
+    public var readOnlyFormulaDisplayRuntimeOverride: FormulaDisplayRuntimeState? {
+        didSet {
+            refreshReadOnlyFormulaDiagnostics()
+        }
+    }
+    public private(set) var readOnlyFormulaDiagnostics: FormulaDisplayDiagnostics
+    #endif
 
     /// Exposed for views that need to format semantic metadata.
     public var semanticIntentAdapter: (any SemanticIntentAdapterProtocol)? {
@@ -23,7 +39,13 @@ final class WorkspaceState {
 
     public var activeToolID: String
 
-    public var selectedObjectIDs: Set<UUID>
+    public var selectedObjectIDs: Set<UUID> {
+        didSet {
+            #if DEBUG
+            refreshReadOnlyFormulaDiagnostics()
+            #endif
+        }
+    }
 
     public var isInputPresented: Bool
     public var inputMode: WorkspaceInputMode
@@ -64,10 +86,21 @@ final class WorkspaceState {
     public var pendingDependencyDeletion: DependencyDeletionDialogContext?
     private var mathKeyboardCompactVisibilityState: MathKeyboardCompactVisibilityState
 
-    public init(module: CalculatorModuleType, document: EMathicaDocument, toolGroups: [WorkspaceToolGroup], moduleProvider: WorkspaceModuleProviding) {
+    public init(
+        module: CalculatorModuleType,
+        document: EMathicaDocument,
+        toolGroups: [WorkspaceToolGroup],
+        moduleProvider: WorkspaceModuleProviding,
+        readOnlyFormulaDisplayConfiguration: FormulaRenderingConfiguration = .default
+    ) {
         self.module = module
         self.moduleProvider = moduleProvider
+        self.readOnlyFormulaDisplayConfiguration = readOnlyFormulaDisplayConfiguration
         self.document = document
+        #if DEBUG
+        self.readOnlyFormulaDisplayRuntimeOverride = nil
+        self.readOnlyFormulaDiagnostics = FormulaDisplayDiagnostics()
+        #endif
 
         self.activeToolID = toolGroups.first?.tools.first?.id ?? ""
 
@@ -112,11 +145,61 @@ final class WorkspaceState {
         self.pendingDeletionHistoryContext = nil
         self.pendingDependencyDeletion = nil
         self.mathKeyboardCompactVisibilityState = .automatic
+        #if DEBUG
+        refreshReadOnlyFormulaDiagnostics()
+        #endif
+    }
+
+    public convenience init(
+        module: CalculatorModuleType,
+        document: EMathicaDocument,
+        toolGroups: [WorkspaceToolGroup],
+        moduleProvider: WorkspaceModuleProviding,
+        objectPanelFormulaDisplayConfiguration: FormulaRenderingConfiguration
+    ) {
+        self.init(
+            module: module,
+            document: document,
+            toolGroups: toolGroups,
+            moduleProvider: moduleProvider,
+            readOnlyFormulaDisplayConfiguration: objectPanelFormulaDisplayConfiguration
+        )
     }
 
     public var selectedObjectID: UUID? {
         selectedObjectIDs.first
     }
+
+    public var effectiveReadOnlyFormulaDisplayConfiguration: FormulaRenderingConfiguration {
+        #if DEBUG
+        if let runtimeOverride = readOnlyFormulaDisplayRuntimeOverride {
+            return .init(
+                backend: runtimeOverride.backend,
+                fontRole: runtimeOverride.fontRole
+            )
+        }
+        #endif
+        return readOnlyFormulaDisplayConfiguration
+    }
+
+    public var effectiveObjectPanelFormulaDisplayConfiguration: FormulaRenderingConfiguration {
+        effectiveReadOnlyFormulaDisplayConfiguration
+    }
+
+    public var objectPanelFormulaDisplayConfiguration: FormulaRenderingConfiguration {
+        readOnlyFormulaDisplayConfiguration
+    }
+
+    #if DEBUG
+    public var objectPanelFormulaDisplayRuntimeOverride: FormulaDisplayRuntimeState? {
+        get { readOnlyFormulaDisplayRuntimeOverride }
+        set { readOnlyFormulaDisplayRuntimeOverride = newValue }
+    }
+
+    public var objectPanelFormulaDiagnostics: FormulaDisplayDiagnostics {
+        readOnlyFormulaDiagnostics
+    }
+    #endif
 
     public var canAppendPiecewiseRow: Bool {
         currentPiecewiseTemplateContext() != nil
@@ -1229,6 +1312,42 @@ final class WorkspaceState {
         guard size.width > 0, size.height > 0 else { return }
         canvasPixelSize = size
     }
+
+    #if DEBUG
+    public func setReadOnlyFormulaBackendOverride(_ backend: FormulaRenderingBackend?) {
+        if let backend {
+            readOnlyFormulaDisplayRuntimeOverride = .init(
+                backend: backend,
+                fontRole: readOnlyFormulaDisplayConfiguration.fontRole
+            )
+        } else {
+            readOnlyFormulaDisplayRuntimeOverride = nil
+        }
+    }
+
+    public func clearReadOnlyFormulaBackendOverride() {
+        readOnlyFormulaDisplayRuntimeOverride = nil
+    }
+
+    public func setObjectPanelFormulaBackendOverride(_ backend: FormulaRenderingBackend?) {
+        setReadOnlyFormulaBackendOverride(backend)
+    }
+
+    public func clearObjectPanelFormulaBackendOverride() {
+        clearReadOnlyFormulaBackendOverride()
+    }
+
+    private func refreshReadOnlyFormulaDiagnostics() {
+        readOnlyFormulaDiagnostics = FormulaDisplayDiagnostics.make(
+            objects: document.objects,
+            selectedObject: selectedObjectID.flatMap { id in
+                document.objects.first(where: { $0.id == id })
+            },
+            geometryResolver: geometryPresentationResolver,
+            configuration: effectiveReadOnlyFormulaDisplayConfiguration
+        )
+    }
+    #endif
 
     private func singleCharacterInsertion(from old: String, to new: String, at cursor: Int) -> String? {
         guard new.count == old.count + 1 else { return nil }

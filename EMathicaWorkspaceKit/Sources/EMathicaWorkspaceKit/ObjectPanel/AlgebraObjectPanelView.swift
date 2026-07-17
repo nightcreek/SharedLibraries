@@ -156,7 +156,8 @@ public struct AlgebraObjectPanelView: View {
                     state.dispatch(.moduleSpecific(id: "plane.findRoots", payload: object.id.uuidString))
                 } : nil,
                 semanticIntentAdapter: state.semanticIntentAdapter,
-                geometryResolver: state.geometryPresentationResolver
+                geometryResolver: state.geometryPresentationResolver,
+                formulaDisplayConfiguration: state.effectiveReadOnlyFormulaDisplayConfiguration
             )
         }
     }

@@ -59,4 +59,49 @@ final class AlgebraObjectPanelSectioningTests: XCTestCase {
 
         XCTAssertEqual(height, expected)
     }
+
+    func testObjectNameMarkupFormatsSubscriptedFunctionName() {
+        XCTAssertEqual(
+            WorkspaceFormulaMarkupResolver.nameMarkup(for: "f_1"),
+            "f_{1}"
+        )
+        XCTAssertEqual(
+            WorkspaceFormulaMarkupResolver.nameMarkup(for: "A"),
+            "A"
+        )
+    }
+
+    func testObjectExpressionMarkupPrefersStructuredDisplayBeforeOriginalLatexFallback() {
+        XCTAssertEqual(
+            WorkspaceFormulaMarkupResolver.expressionMarkup(
+                displayText: "y=x^2",
+                originalLatex: "y=x^{2}",
+                rawInput: "y=x^2"
+            ),
+            "y=x^2"
+        )
+        XCTAssertEqual(
+            WorkspaceFormulaMarkupResolver.expressionMarkup(
+                displayText: "y=x^2",
+                originalLatex: nil,
+                rawInput: "y=x^2"
+            ),
+            "y=x^2"
+        )
+        XCTAssertEqual(
+            WorkspaceFormulaMarkupResolver.expressionMarkup(
+                displayText: "x(t)=t\ny(t)=t",
+                originalLatex: nil,
+                rawInput: "\\parametric{t}{t}{t>0}"
+            ),
+            "\\parametric{t}{t}{t>0}"
+        )
+    }
+
+    func testObjectRowFormulaDisplayUsesCompactSpacingPolicy() {
+        XCTAssertEqual(WorkspaceObjectFormulaDisplayMetrics.nameMaxWidth, 44)
+        XCTAssertEqual(WorkspaceObjectFormulaDisplayMetrics.nameToExpressionSpacing, 1)
+        XCTAssertEqual(WorkspaceObjectFormulaDisplayMetrics.colonTrailingSpacing, 1)
+        XCTAssertTrue(WorkspaceObjectFormulaDisplayMetrics.singleLineUsesHorizontalScroll)
+    }
 }

@@ -2,10 +2,13 @@ import EMathicaFormulaDisplayCore
 import SwiftUI
 
 public struct FormulaDisplayView: View {
-    private let plan: FormulaRenderPlan
+    private enum Storage {
+        case legacy(plan: FormulaRenderPlan, showsCursor: Bool, showsDebugFrames: Bool)
+        case swiftMath(snapshot: FormulaSwiftMathSnapshot?, error: FormulaSwiftMathRenderError?)
+    }
+
+    private let storage: Storage
     private let style: FormulaDisplayStyle
-    private let showsCursor: Bool
-    private let showsDebugFrames: Bool
 
     public init(markup: FormulaDisplayMarkup) {
         self.init(
@@ -35,10 +38,25 @@ public struct FormulaDisplayView: View {
         options: FormulaDisplayOptions = .default,
         metrics: FormulaLayoutMetrics = .default
     ) {
-        self.plan = FormulaDisplayEngine(options: options, metrics: metrics).getPlan(from: markup)
         self.style = style
-        self.showsCursor = options.cursorVisible
-        self.showsDebugFrames = options.debugFramesEnabled
+        let color = style.textColor.resolvedFormulaRGBA()
+        switch FormulaDisplayContentResolver.resolve(
+            markup: markup,
+            options: options,
+            metrics: metrics,
+            foregroundColor: color
+        ) {
+        case .legacy(let plan):
+            self.storage = .legacy(
+                plan: plan,
+                showsCursor: options.cursorVisible,
+                showsDebugFrames: options.debugFramesEnabled
+            )
+        case .swiftMath(let snapshot):
+            self.storage = .swiftMath(snapshot: snapshot, error: nil)
+        case .swiftMathError(let error):
+            self.storage = .swiftMath(snapshot: nil, error: error)
+        }
     }
 
     public init(
@@ -61,18 +79,25 @@ public struct FormulaDisplayView: View {
         showsCursor: Bool = true,
         showsDebugFrames: Bool = false
     ) {
-        self.plan = plan
-        self.style = style
-        self.showsCursor = showsCursor
-        self.showsDebugFrames = showsDebugFrames
-    }
-
-    public var body: some View {
-        FormulaRenderPlanView(
+        self.storage = .legacy(
             plan: plan,
-            style: style,
             showsCursor: showsCursor,
             showsDebugFrames: showsDebugFrames
         )
+        self.style = style
+    }
+
+    public var body: some View {
+        switch storage {
+        case .legacy(let plan, let showsCursor, let showsDebugFrames):
+            FormulaRenderPlanView(
+                plan: plan,
+                style: style,
+                showsCursor: showsCursor,
+                showsDebugFrames: showsDebugFrames
+            )
+        case .swiftMath(let snapshot, let error):
+            FormulaSwiftMathSnapshotView(snapshot: snapshot, error: error, style: style)
+        }
     }
 }

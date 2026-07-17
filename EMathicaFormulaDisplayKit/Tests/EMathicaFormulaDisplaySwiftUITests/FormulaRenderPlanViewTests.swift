@@ -43,7 +43,17 @@ final class FormulaRenderPlanViewTests: XCTestCase {
             elements: [
                 .text(.init(id: .init("text"), text: "x", fontRole: .normal, frame: .init(origin: .init(x: 4, y: 12), size: .init(width: 12, height: 18)))),
                 .line(.init(id: .init("fraction"), frame: .init(origin: .init(x: 20, y: 30), size: .init(width: 40, height: 1)), role: .fractionLine)),
-                .radical(.init(id: .init("sqrt"), frame: .init(origin: .init(x: 64, y: 8), size: .init(width: 36, height: 24)), overlineStart: .init(x: 78, y: 10), overlineEnd: .init(x: 98, y: 10), role: .radical)),
+                .radical(.init(
+                    id: .init("sqrt"),
+                    frame: .init(origin: .init(x: 64, y: 8), size: .init(width: 36, height: 24)),
+                    checkStart: .init(x: 66, y: 24),
+                    checkBottom: .init(x: 71, y: 30),
+                    valley: .init(x: 78, y: 17),
+                    shoulder: .init(x: 84, y: 10),
+                    overlineStart: .init(x: 88, y: 10),
+                    overlineEnd: .init(x: 98, y: 10),
+                    role: .radical
+                )),
                 .cursor(.init(id: .init("cursor"), frame: .init(origin: .init(x: 102, y: 10), size: .init(width: 2, height: 24)))),
                 .placeholder(.init(id: .init("placeholder"), frame: .init(origin: .init(x: 108, y: 12), size: .init(width: 12, height: 18))))
             ],

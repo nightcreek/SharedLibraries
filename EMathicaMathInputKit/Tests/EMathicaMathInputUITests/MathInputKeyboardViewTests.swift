@@ -93,7 +93,7 @@ final class MathInputKeyboardViewTests: XCTestCase {
         XCTAssertTrue(labels.contains(#"\alpha"#))
         XCTAssertTrue(labels.contains(#"\theta"#))
         XCTAssertTrue(labels.contains(#"\omega"#))
-        XCTAssertEqual(model.alphabetLetterRows[2].keys.last?.label, .formulaMarkup("a"))
+        XCTAssertEqual(model.alphabetLetterRows[2].keys.last?.label, .formulaMarkup(#"a/\alpha"#))
     }
 
     func testAlphabetPanelGreekUppercaseContainsExpectedCommands() {
@@ -113,7 +113,7 @@ final class MathInputKeyboardViewTests: XCTestCase {
         XCTAssertTrue(labels.contains(#"\Gamma"#))
         XCTAssertTrue(labels.contains(#"\Theta"#))
         XCTAssertTrue(labels.contains(#"\Omega"#))
-        XCTAssertEqual(model.alphabetLetterRows[2].keys.last?.label, .formulaMarkup("a"))
+        XCTAssertEqual(model.alphabetLetterRows[2].keys.last?.label, .formulaMarkup(#"a/\alpha"#))
     }
 
     func testCaseToggleChangesDisplayedLetterSet() {
@@ -257,7 +257,7 @@ final class MathInputKeyboardViewTests: XCTestCase {
         XCTAssertEqual(model.letterCase, .uppercase)
     }
 
-    func testAlphabetToggleLabelsUseSingleGlyphMarkers() {
+    func testAlphabetToggleLabelsUseDualSemanticMarkers() {
         let latin = MathInputKeyboardSurfaceModel(
             layout: MathKeyboardLayouts.standard,
             selectedPanelID: "alphabet",
@@ -271,16 +271,64 @@ final class MathInputKeyboardViewTests: XCTestCase {
             letterCase: .uppercase
         )
 
-        XCTAssertEqual(latin.key(for: MathInputKeyboardSurfaceModel.caseToggleKeyID)?.label, .formulaMarkup("a"))
-        XCTAssertEqual(latin.key(for: MathInputKeyboardSurfaceModel.scriptToggleKeyID)?.label, .formulaMarkup(#"\alpha"#))
-        XCTAssertEqual(greek.key(for: MathInputKeyboardSurfaceModel.scriptToggleKeyID)?.label, .formulaMarkup("a"))
+        XCTAssertEqual(latin.key(for: MathInputKeyboardSurfaceModel.caseToggleKeyID)?.label, .formulaMarkup("Aa"))
+        XCTAssertEqual(latin.key(for: MathInputKeyboardSurfaceModel.scriptToggleKeyID)?.label, .formulaMarkup(#"a/\alpha"#))
+        XCTAssertEqual(greek.key(for: MathInputKeyboardSurfaceModel.caseToggleKeyID)?.label, .formulaMarkup("Aa"))
+        XCTAssertEqual(greek.key(for: MathInputKeyboardSurfaceModel.scriptToggleKeyID)?.label, .formulaMarkup(#"a/\alpha"#))
     }
 
     func testKeyboardFormulaMetricsUseCompactKeycapSizing() {
         let metrics = MathInputKeyboardStyleBridge.formulaLayoutMetrics(style: .default, role: .template)
         XCTAssertLessThan(metrics.baseFontSize, FormulaLayoutMetrics.default.baseFontSize)
-        XCTAssertLessThan(metrics.placeholderHeight, FormulaLayoutMetrics.default.placeholderHeight)
+        XCTAssertGreaterThan(metrics.baseFontSize, 12)
+        XCTAssertGreaterThan(metrics.placeholderHeight, 12.5)
         XCTAssertLessThan(metrics.fractionHorizontalPadding, FormulaLayoutMetrics.default.fractionHorizontalPadding)
+        XCTAssertGreaterThan(metrics.delimiterHorizontalPadding, 1.8)
+        XCTAssertLessThan(metrics.sqrtHorizontalPadding, FormulaLayoutMetrics.default.sqrtHorizontalPadding)
+    }
+
+    func testKeyboardFormulaMetricsKeepSqrtAndFractionReadable() {
+        let metrics = MathInputKeyboardStyleBridge.formulaLayoutMetrics(style: .default, role: .template)
+        let sqrtPlan = FormulaDisplayEngine(metrics: metrics).getPlan(from: .init(rawValue: #"\sqrt{\placeholder{}}"#))
+        let fractionPlan = FormulaDisplayEngine(metrics: metrics).getPlan(from: .init(rawValue: #"\frac{\placeholder{}}{\placeholder{}}"#))
+
+        XCTAssertGreaterThan(sqrtPlan.size.width, 10)
+        XCTAssertGreaterThan(sqrtPlan.size.height, 10)
+        XCTAssertGreaterThan(fractionPlan.size.width, 10)
+        XCTAssertGreaterThan(fractionPlan.size.height, 10)
+        XCTAssertFalse(sqrtPlan.placeholderRects.isEmpty)
+        XCTAssertGreaterThanOrEqual(fractionPlan.placeholderRects.count, 2)
+    }
+
+    func testKeyboardFormulaMetricsKeepDelimiterAndFunctionGapsVisible() {
+        let metrics = MathInputKeyboardStyleBridge.formulaLayoutMetrics(style: .default, role: .template)
+        let layoutEngine = FormulaLayoutEngine(metrics: metrics)
+
+        let parenthesesBox = layoutEngine.layout(.parentheses(content: .placeholder))
+        let absoluteValueBox = layoutEngine.layout(.absoluteValue(content: .placeholder))
+        let functionBox = layoutEngine.layout(.function(name: "sin", arguments: [.placeholder]))
+
+        guard
+            let parenthesesChild = parenthesesBox.children.first,
+            let absoluteValueChild = absoluteValueBox.children.first
+        else {
+            return XCTFail("Expected delimiter children")
+        }
+
+        XCTAssertGreaterThan(parenthesesChild.origin.x, 2)
+        XCTAssertGreaterThan(absoluteValueChild.origin.x, 2)
+        XCTAssertLessThan(parenthesesChild.origin.x, 6)
+        XCTAssertLessThan(absoluteValueChild.origin.x, 5)
+        XCTAssertEqual(functionBox.children.count, 2)
+        XCTAssertGreaterThan(functionBox.children[1].origin.x - functionBox.children[0].box.size.width, 0)
+        XCTAssertLessThan(functionBox.children[1].origin.x - functionBox.children[0].box.size.width, 4)
+    }
+
+    func testKeyboardFormulaMetricsKeepParametricTemplateCompact() {
+        let metrics = MathInputKeyboardStyleBridge.formulaLayoutMetrics(style: .default, role: .template)
+        let plan = FormulaDisplayEngine(metrics: metrics).getPlan(from: .init(rawValue: #"\parametric{x}{y}{t>0}"#))
+        XCTAssertGreaterThan(plan.size.width, 0)
+        XCTAssertLessThan(plan.size.width, 95)
     }
 
     func testActionConvenienceInitializerRemainsAvailable() {

@@ -184,7 +184,7 @@ private extension MathInputKeyboardSurfaceModel {
     static func caseToggleKey(for letterCase: MathKeyboardLetterCase) -> MathKeyboardKey {
         MathKeyboardKey(
             id: caseToggleKeyID,
-            label: .formulaMarkup("a"),
+            label: .formulaMarkup("Aa"),
             intent: .none,
             size: .wide,
             accessibilityLabel: "切换大小写"
@@ -194,7 +194,7 @@ private extension MathInputKeyboardSurfaceModel {
     static func scriptToggleKey(for script: MathKeyboardAlphabetScript) -> MathKeyboardKey {
         MathKeyboardKey(
             id: scriptToggleKeyID,
-            label: .formulaMarkup(script == .latin ? #"\alpha"# : "a"),
+            label: .formulaMarkup(script == .latin ? #"a/\alpha"# : #"a/\alpha"#),
             intent: .none,
             size: .wide,
             accessibilityLabel: "切换字母脚本"

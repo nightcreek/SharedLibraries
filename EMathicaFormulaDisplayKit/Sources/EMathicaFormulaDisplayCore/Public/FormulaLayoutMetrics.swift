@@ -25,17 +25,17 @@ public struct FormulaLayoutMetrics: Equatable, Sendable {
         baseFontSize: Double = 20,
         scriptScale: Double = 0.64,
         minimumFontSize: Double = 9,
-        operatorSpacing: Double = 4,
-        functionSpacing: Double = 4,
-        fractionHorizontalPadding: Double = 8,
-        fractionVerticalGap: Double = 6,
-        fractionLineThickness: Double = 1,
-        sqrtHorizontalPadding: Double = 6,
+        operatorSpacing: Double = 3.6,
+        functionSpacing: Double = 3.4,
+        fractionHorizontalPadding: Double = 6.6,
+        fractionVerticalGap: Double = 5.2,
+        fractionLineThickness: Double = 0.9,
+        sqrtHorizontalPadding: Double = 3.8,
         sqrtOverlineGap: Double = 2,
         scriptVerticalRaise: Double = 12,
         subscriptVerticalDrop: Double = 8,
-        delimiterHorizontalPadding: Double = 4,
-        absoluteValueStrokeWidth: Double = 1,
+        delimiterHorizontalPadding: Double = 3.1,
+        absoluteValueStrokeWidth: Double = 0.7,
         rawFallbackPadding: Double = 4,
         cursorWidth: Double = 2,
         placeholderWidth: Double = 14,
@@ -68,6 +68,12 @@ public struct FormulaLayoutMetrics: Equatable, Sendable {
     public func scaledForScript() -> FormulaLayoutMetrics {
         let scaledFontSize = max(minimumFontSize, baseFontSize * scriptScale)
         let scale = scaledFontSize / max(baseFontSize, 1)
+        let scaledPlaceholderWidth = max(placeholderWidth * scale, scaledFontSize * 0.78)
+        let scaledPlaceholderHeight = max(placeholderHeight * scale, scaledFontSize * 1.02)
+        let scaledMinimumSize = FormulaSize(
+            width: max(minimumBoxSize.width * scale, scaledFontSize * 0.82),
+            height: max(minimumBoxSize.height * scale, scaledFontSize * 1.06)
+        )
         return FormulaLayoutMetrics(
             baseFontSize: scaledFontSize,
             scriptScale: scriptScale,
@@ -76,21 +82,18 @@ public struct FormulaLayoutMetrics: Equatable, Sendable {
             functionSpacing: functionSpacing * scale,
             fractionHorizontalPadding: fractionHorizontalPadding * scale,
             fractionVerticalGap: fractionVerticalGap * scale,
-            fractionLineThickness: max(1, fractionLineThickness * scale),
+            fractionLineThickness: max(0.75, fractionLineThickness * scale),
             sqrtHorizontalPadding: sqrtHorizontalPadding * scale,
             sqrtOverlineGap: sqrtOverlineGap * scale,
             scriptVerticalRaise: scriptVerticalRaise * scale,
             subscriptVerticalDrop: subscriptVerticalDrop * scale,
             delimiterHorizontalPadding: delimiterHorizontalPadding * scale,
-            absoluteValueStrokeWidth: max(1, absoluteValueStrokeWidth * scale),
+            absoluteValueStrokeWidth: max(0.7, absoluteValueStrokeWidth * scale),
             rawFallbackPadding: rawFallbackPadding * scale,
-            cursorWidth: max(1, cursorWidth * scale),
-            placeholderWidth: placeholderWidth * scale,
-            placeholderHeight: placeholderHeight * scale,
-            minimumBoxSize: .init(
-                width: minimumBoxSize.width * scale,
-                height: minimumBoxSize.height * scale
-            )
+            cursorWidth: max(0.9, cursorWidth * scale),
+            placeholderWidth: scaledPlaceholderWidth,
+            placeholderHeight: scaledPlaceholderHeight,
+            minimumBoxSize: scaledMinimumSize
         )
     }
 }

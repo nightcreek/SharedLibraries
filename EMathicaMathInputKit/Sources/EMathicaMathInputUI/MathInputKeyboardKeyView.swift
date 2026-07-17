@@ -23,8 +23,8 @@ struct MathInputKeyboardKeyView: View {
                 style: style,
                 visualRole: visualRole
             )
-            .padding(.horizontal, 4)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 MathInputKeyboardStyleBridge.keyBackground(

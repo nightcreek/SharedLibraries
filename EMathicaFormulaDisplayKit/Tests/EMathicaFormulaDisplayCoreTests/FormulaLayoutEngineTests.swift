@@ -136,6 +136,66 @@ final class FormulaLayoutEngineTests: XCTestCase {
         XCTAssertLessThan(content.origin.y + content.box.size.height, box.size.height + 0.001)
     }
 
+    func testParenthesesPlaceholderLeavesVisibleHorizontalGap() {
+        let box = engine.layout(.parentheses(content: .placeholder))
+        guard let content = box.children.first else {
+            return XCTFail("Expected content child")
+        }
+        XCTAssertGreaterThan(content.origin.x, 2)
+        XCTAssertGreaterThan(box.size.width - (content.origin.x + content.box.size.width), 2)
+        XCTAssertLessThan(content.origin.x, 6.5)
+    }
+
+    func testAbsoluteValuePlaceholderLeavesVisibleHorizontalGap() {
+        let box = engine.layout(.absoluteValue(content: .placeholder))
+        guard let content = box.children.first else {
+            return XCTFail("Expected content child")
+        }
+        XCTAssertGreaterThan(content.origin.x, 2)
+        XCTAssertGreaterThan(box.size.width - (content.origin.x + content.box.size.width), 2)
+        XCTAssertLessThan(content.origin.x, 5.5)
+    }
+
+    func testSqrtRadicandOffsetStaysCompactWithoutOverlap() {
+        let box = engine.layout(.sqrt(radicand: .placeholder))
+        guard let child = box.children.first else {
+            return XCTFail("Expected radicand child")
+        }
+        XCTAssertGreaterThan(child.origin.x, 0)
+        XCTAssertLessThan(child.origin.x, box.size.width * 0.32)
+        XCTAssertGreaterThanOrEqual(child.origin.x, 2)
+    }
+
+    func testSqrtTopPaddingStaysCompact() {
+        let box = engine.layout(.sqrt(radicand: .placeholder))
+        guard let child = box.children.first else {
+            return XCTFail("Expected radicand child")
+        }
+        XCTAssertGreaterThan(child.origin.y, 0)
+        XCTAssertLessThan(child.origin.y, 3.0)
+    }
+
+    func testFunctionPlaceholderHasPositiveGap() {
+        let box = engine.layout(.function(name: "sin", arguments: [.placeholder]))
+        XCTAssertEqual(box.children.count, 2)
+        let functionName = box.children[0]
+        let placeholder = box.children[1]
+        XCTAssertGreaterThan(placeholder.origin.x - functionName.box.size.width, 0)
+        XCTAssertLessThan(placeholder.origin.x - functionName.box.size.width, 4)
+    }
+
+    func testPunctuationHeavyTextUsesNarrowerWidthEstimate() {
+        let metrics = FormulaLayoutMetrics.default
+        let box = FormulaLayoutEngine(metrics: metrics).layout(.text("x(t)=", role: .raw))
+        let naiveWidth = 5.0 * metrics.baseFontSize * 0.6
+        XCTAssertLessThan(box.size.width, naiveWidth)
+    }
+
+    func testParametricLayoutUsesCompactLabelWidth() {
+        let box = engine.layout(.parametric2D(x: .text("x", role: .symbol), y: .text("y", role: .symbol), range: .text("t>0", role: .raw)))
+        XCTAssertLessThan(box.size.width, 110)
+    }
+
     func testParametricLayoutProducesMultipleRows() {
         let box = engine.layout(.parametric2D(x: .text("x", role: .symbol), y: .text("y", role: .symbol), range: .text("t", role: .symbol)))
         XCTAssertEqual(box.kind, .parametric2D)

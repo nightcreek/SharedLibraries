@@ -97,7 +97,13 @@ public struct ObjectInspectorPanel: View {
                         InspectorSection(title: "对象") {
                             InspectorLine(label: "名称", value: object.name)
                             InspectorLine(label: "类型", value: object.type.rawValue)
-                            InspectorLine(label: "显示", value: WorkspaceObjectExpressionDisplayResolver.primaryText(for: object))
+                            if let displayLine = InspectorFormulaSourceBuilder.objectLines(for: object).first {
+                                InspectorFormulaLine(
+                                    label: displayLine.label,
+                                    source: displayLine.source,
+                                    configuration: state.effectiveReadOnlyFormulaDisplayConfiguration
+                                )
+                            }
                             InspectorLine(label: "可见", value: object.isVisible ? "是" : "否")
                             InspectorLine(label: "颜色", value: colorLabel(for: object.style.colorToken))
                         }
@@ -372,9 +378,13 @@ public struct ObjectInspectorPanel: View {
 
     private func algebraSection(_ analysis: AlgebraAnalysisResult) -> some View {
         InspectorSection(title: "CAS") {
-            InspectorLine(label: "rawInput", value: analysis.rawInput ?? analysis.originalLatex)
-            InspectorLine(label: "normalizedExpression", value: analysis.normalizedExpression ?? analysis.normalizedLatex)
-            InspectorLine(label: "simplifiedExpression", value: analysis.simplifiedExpression ?? analysis.simplifiedLatex)
+            ForEach(Array(InspectorFormulaSourceBuilder.algebraLines(for: analysis).enumerated()), id: \.offset) { _, line in
+                InspectorFormulaLine(
+                    label: line.label,
+                    source: line.source,
+                    configuration: state.effectiveReadOnlyFormulaDisplayConfiguration
+                )
+            }
             InspectorLine(label: "recognizedShape", value: analysis.recognizedShape?.displayName ?? "未识别")
             InspectorLine(label: "graphKind", value: analysis.classification.kind.rawValue)
             InspectorLine(label: "plotStrategy", value: analysis.plotStrategy?.displayName ?? "默认")
@@ -387,9 +397,13 @@ public struct ObjectInspectorPanel: View {
         if let rewriteInfo = analysis.rewriteInfo {
             InspectorSection(title: "参数化重写") {
                 InspectorLine(label: "rewriteInfo", value: rewriteInfo.summary)
-                InspectorLine(label: "x(t)", value: xEquation(rewriteInfo.curve))
-                InspectorLine(label: "y(t)", value: yEquation(rewriteInfo.curve))
-                InspectorLine(label: "参数范围", value: parameterRange(rewriteInfo.curve))
+                ForEach(Array(InspectorFormulaSourceBuilder.rewriteLines(for: analysis).enumerated()), id: \.offset) { _, line in
+                    InspectorFormulaLine(
+                        label: line.label,
+                        source: line.source,
+                        configuration: state.effectiveReadOnlyFormulaDisplayConfiguration
+                    )
+                }
                 if let restrictions = analysis.restrictions, !restrictions.isEmpty {
                     InspectorLine(label: "restrictions", value: restrictions.joined(separator: ", "))
                 }
@@ -437,55 +451,6 @@ public struct ObjectInspectorPanel: View {
             InspectorLine(label: "角度单位", value: "弧度")
             InspectorLine(label: "采样精度", value: "自动")
             InspectorLine(label: "参数滑条默认范围", value: "-10...10")
-        }
-    }
-
-    private func xEquation(_ curve: ParametricCurveDefinition) -> String {
-        switch curve.kind {
-        case .circle, .ellipse:
-            return "\(format(curve.centerX)) + \(format(curve.radiusX)) cos(t)"
-        case .hyperbolaHorizontal:
-            return "\(format(curve.centerX)) ± \(format(curve.radiusX)) cosh(t)"
-        case .hyperbolaVertical:
-            return "\(format(curve.centerX)) + \(format(curve.radiusX)) sinh(t)"
-        case .parabolaHorizontal:
-            return "\(format(curve.centerX)) + \(format(curve.focalParameter ?? 0)) t²"
-        case .parabolaVertical:
-            return "\(format(curve.centerX)) + \(format(2 * (curve.focalParameter ?? 0))) t"
-        case .superellipse:
-            break
-        }
-        let radius = curve.radiusXSymbol ?? format(curve.radiusX)
-        let exponent = curve.exponentSymbol ?? format(curve.exponent)
-        return "\(format(curve.centerX)) + \(radius) sign(cos(t)) |cos(t)|^(2/\(exponent))"
-    }
-
-    private func yEquation(_ curve: ParametricCurveDefinition) -> String {
-        switch curve.kind {
-        case .circle, .ellipse:
-            return "\(format(curve.centerY)) + \(format(curve.radiusY)) sin(t)"
-        case .hyperbolaHorizontal:
-            return "\(format(curve.centerY)) + \(format(curve.radiusY)) sinh(t)"
-        case .hyperbolaVertical:
-            return "\(format(curve.centerY)) ± \(format(curve.radiusY)) cosh(t)"
-        case .parabolaHorizontal:
-            return "\(format(curve.centerY)) + \(format(2 * (curve.focalParameter ?? 0))) t"
-        case .parabolaVertical:
-            return "\(format(curve.centerY)) + \(format(curve.focalParameter ?? 0)) t²"
-        case .superellipse:
-            break
-        }
-        let radius = curve.radiusYSymbol ?? format(curve.radiusY)
-        let exponent = curve.exponentSymbol ?? format(curve.exponent)
-        return "\(format(curve.centerY)) + \(radius) sign(sin(t)) |sin(t)|^(2/\(exponent))"
-    }
-
-    private func parameterRange(_ curve: ParametricCurveDefinition) -> String {
-        switch curve.kind {
-        case .circle, .ellipse, .superellipse:
-            return "t ∈ [0, 2π]"
-        case .hyperbolaHorizontal, .hyperbolaVertical, .parabolaHorizontal, .parabolaVertical:
-            return "t ∈ ℝ"
         }
     }
 
@@ -540,6 +505,36 @@ private struct InspectorLine: View {
                     .textSelection(.enabled)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private enum InspectorFormulaLayout {
+    static let maximumHeight: CGFloat = 152
+}
+
+private struct InspectorFormulaLine: View {
+    let label: String
+    let source: WorkspaceReadOnlyFormulaSource
+    let configuration: FormulaRenderingConfiguration
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            WorkspaceReadOnlyFormulaText(
+                surface: .inspector,
+                rawValue: source.rawValue,
+                fallbackText: source.fallbackText,
+                tint: .primary,
+                fontSize: source.fontSize,
+                minHeight: source.minHeight,
+                maxHeight: InspectorFormulaLayout.maximumHeight,
+                allowsMultiline: source.allowsMultiline,
+                configuration: configuration
+            )
         }
     }
 }
